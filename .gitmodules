@@ -1,0 +1,3 @@
+[submodule "sam3-onnx"]
+	path = sam3-onnx
+	url = https://huggingface.co/wkentaro/sam3-onnx-models
