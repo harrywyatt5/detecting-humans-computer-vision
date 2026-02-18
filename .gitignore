@@ -2,4 +2,5 @@
 **/*.png
 **/*.gif
 **/*.txt
-model_cache/*
+build/*
+
