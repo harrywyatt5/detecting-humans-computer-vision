@@ -1,12 +1,13 @@
 #pragma once
 
+#include "AbstractTensor.h"
+
 #include <vector>
-#include <memory>
 #include <string>
 #include <opencv2/opencv.hpp>
 #include <onnxruntime_cxx_api.h>
 
-class TensorImage {
+class TensorImage : public AbstractTensor {
 private:
 	uint8_t* imageData;
 	int originalHeight;
@@ -27,12 +28,12 @@ public:
 	uint8_t* data() {
 		return this->imageData;
 	};
-	int size() const;
+	int64_t size() const;
 	Ort::Value getInitialisedTensor(Ort::MemoryInfo& memoryInfo);
 	~TensorImage();
 	
-	static std::vector<int64_t>& getImageDimensions() {
+	static const std::vector<int64_t>& getImageDimensions() {
 		return imageSize;
 	};
-	static std::unique_ptr<TensorImage> createImageFromFile(const std::string& fileName);
+	static TensorImage createImageFromFile(const std::string& fileName);
 };

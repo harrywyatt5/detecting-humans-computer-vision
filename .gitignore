@@ -3,4 +3,5 @@
 **/*.gif
 inputsandoutputs.txt
 build/*
+model_cache/*
 

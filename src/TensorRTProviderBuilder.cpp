@@ -24,6 +24,7 @@ OrtTensorRTProviderOptions TensorRTProviderBuilder::build() const {
 	rtProviderOptions.trt_fp16_enable = useFP16 ? 1 : 0;
 	rtProviderOptions.trt_engine_cache_enable = 1;
 	rtProviderOptions.trt_engine_cache_path = cachePath.c_str();
+	rtProviderOptions.trt_max_workspace_size = gpuMemorySize;
 	
 	return rtProviderOptions;
 }

@@ -1,9 +1,9 @@
 #include "TensorImage.h"
 
 int TensorImage::targetSize = 1008;
-std::vector<int64_t> TensorImage::imageSize = {3, 1008, 1008};
+std::vector<int64_t> TensorImage::imageSize = {3, TensorImage::targetSize, TensorImage::targetSize};
 
-std::unique_ptr<TensorImage> TensorImage::createImageFromFile(const std::string& name) {
+TensorImage TensorImage::createImageFromFile(const std::string& name) {
 	// The image needs to be read into memory and scaled to 1008x1008. We then
 	// need to reorder the bytes so all red bytes are ordered first, then green, then blue
 	cv::Mat image = cv::imread(name);
@@ -15,27 +15,28 @@ std::unique_ptr<TensorImage> TensorImage::createImageFromFile(const std::string&
 	
 	uint8_t* imageData = new uint8_t[TensorImage::targetSize * TensorImage::targetSize * 3];
 	TensorImage::reorderImageHelper(resizedImage, imageData);
-	return std::make_unique<TensorImage>(imageData, width, height);
+	return TensorImage(imageData, width, height);
 }
 
 void TensorImage::resizeImageHelper(const cv::Mat& inputImage, cv::Mat& outputImage) {
 	// We have to resize the image
-	auto imgSize = inputImage.size();
-	float largestSide = imgSize.width >= imgSize.height ? (float)imgSize.width : (float)imgSize.height;	
-	float resizePercentage = (float)TensorImage::targetSize / largestSide;
+	// auto imgSize = inputImage.size();
+	// float largestSide = imgSize.width >= imgSize.height ? (float)imgSize.width : (float)imgSize.height;	
+	// float resizePercentage = (float)TensorImage::targetSize / largestSide;
 	
-	int newHeight = imgSize.height * resizePercentage;
-	int newWidth = imgSize.width * resizePercentage;
-	int padOnHeight = TensorImage::targetSize - newHeight;
-	int padOnWidth = TensorImage::targetSize - newWidth;
+	// int newHeight = imgSize.height * resizePercentage;
+	// int newWidth = imgSize.width * resizePercentage;
+	// int padOnHeight = TensorImage::targetSize - newHeight;
+	// int padOnWidth = TensorImage::targetSize - newWidth;
 
-	cv::Mat resizedIntermediate;
-	cv::resize(inputImage, resizedIntermediate, cv::Size(newWidth, newHeight));
+	// cv::Mat resizedIntermediate;
+	// cv::resize(inputImage, resizedIntermediate, cv::Size(newWidth, newHeight));
 
-	cv::copyMakeBorder(resizedIntermediate, outputImage, 0, padOnHeight, 0, padOnWidth, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+	// cv::copyMakeBorder(resizedIntermediate, outputImage, 0, padOnHeight, 0, padOnWidth, cv::BORDER_CONSTANT, cv::Scalar(0, 0, 0));
+	cv::resize(inputImage, outputImage, cv::Size(TensorImage::targetSize, TensorImage::targetSize));
 }
 
-int TensorImage::size() const {
+int64_t TensorImage::size() const {
 	return TensorImage::targetSize * TensorImage::targetSize * 3;
 }
 

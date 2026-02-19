@@ -8,8 +8,8 @@ class TensorRTProviderBuilder {
 private:
 	std::string cachePath = "./model_cache";
 	int deviceId = 0;
-	long gpuMemorySize = 6LL * 1024 * 1024 * 1024;
-	bool useFP16 = true;
+	long gpuMemorySize = 4LL * 1024 * 1024 * 1024;
+	bool useFP16 = false;
 public:
 	TensorRTProviderBuilder() {};
 	void withCachePath(const std::string& newValue);
