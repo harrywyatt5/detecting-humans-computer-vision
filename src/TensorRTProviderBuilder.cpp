@@ -1,6 +1,8 @@
 #include "TensorRTProviderBuilder.h"
 
 #include <iostream>
+#include <onnxruntime_cxx_api.h>
+#include <onnxruntime_c_api.h>
 
 void TensorRTProviderBuilder::withCachePath(const std::string& newValue) {
 	this->cachePath = newValue;
@@ -18,10 +20,18 @@ void TensorRTProviderBuilder::isFP16Enabled(const bool newValue) {
 	this->useFP16 = newValue;
 }
 
-OrtTensorRTProviderOptions TensorRTProviderBuilder::build() const {
-	OrtTensorRTProviderOptions rtProviderOptions{};
+void TensorRTProviderBuilder::isFP32NormFallback(const bool newValue) {
+	this->useFP32NormFallback = newValue;
+}
+
+OrtTensorRTProviderOptionsV2 TensorRTProviderBuilder::build() const {
+	const auto& api = Ort::GetApi();
+	OrtTensorRTProviderOptionsV2* rtProviderOptions = nullptr;
+	// TODO HERE RIGHT NOW
+	OrtTensorRTProviderOptionsV2 rtProviderOptions{};
 	rtProviderOptions.device_id = deviceId;
 	rtProviderOptions.trt_fp16_enable = useFP16 ? 1 : 0;
+	rtProviderOptions.trt_layer_norm_fp32_fallback = useFP32NormFallback ? 1 : 0;
 	rtProviderOptions.trt_engine_cache_enable = 1;
 	rtProviderOptions.trt_engine_cache_path = cachePath.c_str();
 	rtProviderOptions.trt_max_workspace_size = gpuMemorySize;

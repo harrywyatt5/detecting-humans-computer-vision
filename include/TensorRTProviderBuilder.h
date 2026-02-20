@@ -10,12 +10,14 @@ private:
 	int deviceId = 0;
 	long gpuMemorySize = 4LL * 1024 * 1024 * 1024;
 	bool useFP16 = false;
+	bool useFP32NormFallback = false;
 public:
 	TensorRTProviderBuilder() {};
 	void withCachePath(const std::string& newValue);
 	void withDeviceId(const int newValue);
 	void withGpuMemorySize(const long newValue);
 	void isFP16Enabled(const bool newValue);
+	void isFP32NormFallback(const bool newValue);
 	
 	OrtTensorRTProviderOptions build() const;
 	bool mountToSessionOptions(Ort::SessionOptions& sessionOptions, const bool noFail) const;
