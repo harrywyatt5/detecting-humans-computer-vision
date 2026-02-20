@@ -34,15 +34,19 @@ int main() {
 	auto decoderOut = std::make_shared<std::vector<std::string>>(
 		std::initializer_list<std::string>{"boxes", "scores"}
 	);
-	OnnxSessionPartial imgEncoderSession("sam3-onnx/sam3_image_encoder_fp16.onnx", imageEncoderIn, imageEncoderOut);
-	OnnxSessionPartial langEncoderSession("sam3-onnx/sam3_language_encoder_fp16.onnx", languageEncoderIn, languageEncoderOut);
-	OnnxSessionPartial decoderSession("sam3-onnx/sam3_decoder_fp16.onnx", decoderIn, decoderOut);
+	OnnxSessionPartial imgEncoderSession("sam3-onnx/sam3_image_encoder.onnx", imageEncoderIn, imageEncoderOut);
+	OnnxSessionPartial langEncoderSession("sam3-onnx/sam3_language_encoder.onnx", languageEncoderIn, languageEncoderOut);
+	OnnxSessionPartial decoderSession("sam3-onnx/sam3_decoder.onnx", decoderIn, decoderOut);
 	// END: Initialisation of sessions
 
 	// Initialise the engine
 	std::cout << "Intialising the engine" << std::endl;
-	TensorRTProviderBuilder builder;
-	Sam3Model model(imgEncoderSession, langEncoderSession, decoderSession, builder);
+	auto imgEncoderBuilder = TensorRTProviderBuilder()
+													.isFP16Enabled(true)
+													.isFP32NormFallback(true);
+	TensorRTProviderBuilder textEncoderBuilder;
+	TensorRTProviderBuilder decoderBuilder;
+	Sam3Model model(imgEncoderSession, imgEncoderBuilder, langEncoderSession, textEncoderBuilder, decoderSession, decoderBuilder);
 	std::cout << "Ready!" << std::endl;
 
 	// Initialise data that needs to be encoded and 

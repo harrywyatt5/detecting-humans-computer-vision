@@ -1,57 +1,66 @@
 #include "TensorRTProviderBuilder.h"
 
-#include <iostream>
 #include <onnxruntime_cxx_api.h>
 #include <onnxruntime_c_api.h>
+#include <string>
 
-void TensorRTProviderBuilder::withCachePath(const std::string& newValue) {
+TensorRTProviderBuilder& TensorRTProviderBuilder::withCachePath(const std::string& newValue) {
 	this->cachePath = newValue;
+	return *this;
 }
 
-void TensorRTProviderBuilder::withDeviceId(const int newValue) {
+TensorRTProviderBuilder& TensorRTProviderBuilder::withDeviceId(const int newValue) {
 	this->deviceId = newValue;
+	return *this;
 }
 
-void TensorRTProviderBuilder::withGpuMemorySize(const long newValue) {
+TensorRTProviderBuilder& TensorRTProviderBuilder::withGpuMemorySize(const long newValue) {
 	this->gpuMemorySize = newValue;
+	return *this;
 }
 
-void TensorRTProviderBuilder::isFP16Enabled(const bool newValue) {
+TensorRTProviderBuilder& TensorRTProviderBuilder::isFP16Enabled(const bool newValue) {
 	this->useFP16 = newValue;
+	return *this;
 }
 
-void TensorRTProviderBuilder::isFP32NormFallback(const bool newValue) {
+TensorRTProviderBuilder& TensorRTProviderBuilder::isFP32NormFallback(const bool newValue) {
 	this->useFP32NormFallback = newValue;
+	return *this;
 }
 
-OrtTensorRTProviderOptionsV2 TensorRTProviderBuilder::build() const {
+OrtTensorRTProviderOptionsV2* TensorRTProviderBuilder::build() const {
 	const auto& api = Ort::GetApi();
 	OrtTensorRTProviderOptionsV2* rtProviderOptions = nullptr;
-	// TODO HERE RIGHT NOW
-	OrtTensorRTProviderOptionsV2 rtProviderOptions{};
-	rtProviderOptions.device_id = deviceId;
-	rtProviderOptions.trt_fp16_enable = useFP16 ? 1 : 0;
-	rtProviderOptions.trt_layer_norm_fp32_fallback = useFP32NormFallback ? 1 : 0;
-	rtProviderOptions.trt_engine_cache_enable = 1;
-	rtProviderOptions.trt_engine_cache_path = cachePath.c_str();
-	rtProviderOptions.trt_max_workspace_size = gpuMemorySize;
-	
-	return rtProviderOptions;
-}
+	Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&rtProviderOptions));
 
-bool TensorRTProviderBuilder::mountToSessionOptions(Ort::SessionOptions& sessionOptions, const bool noFail) const {
-	auto rtProviderOptions = build();
+	std::vector<const char*> keys = {
+		"device_id",
+		"trt_fp16_enable",
+		"trt_layer_norm_fp32_fallback",
+		"trt_engine_cache_enable",
+		"trt_engine_cache_path",
+		"trt_max_workspace_size"
+	};
+	auto deviceIdString = std::to_string(deviceId);
+	auto gpuMemorySizeString = std::to_string(gpuMemorySize);
+	std::vector<const char*> values = {
+		deviceIdString.c_str(),
+		useFP16 ? "1" : "0",
+		useFP32NormFallback ? "1" : "0",
+		"1",
+		cachePath.c_str(),
+		gpuMemorySizeString.c_str()
+	};
+
+	Ort::ThrowOnError(api.UpdateTensorRTProviderOptions(
+		rtProviderOptions,
+		keys.data(),
+		values.data(),
+		keys.size()
+	));
 	
-	try {
-		sessionOptions.AppendExecutionProvider_TensorRT(rtProviderOptions);
-		return true;
-	} catch (const std::exception& exception) {
-		std::cerr << "TensorRT could not be used. Reason " << exception.what() << std::endl;
-		if (noFail) {
-			return false;
-		} else {
-			throw;
-		}
-	}
+	// Ownership of this pointer is the responsibility of the caller
+	return rtProviderOptions;
 }
 

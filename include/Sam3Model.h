@@ -14,15 +14,30 @@
 class Sam3Model {
 private:
 	Ort::Env environment;
-	Ort::SessionOptions sessionOptions;
 	Ort::MemoryInfo memoryInfo;
+
 	std::optional<OnnxSession> imageEncoderSession;
+	Ort::SessionOptions imageEncoderOptions;
+
 	std::optional<OnnxSession> textEncoderSession;
+	Ort::SessionOptions textEncoderOptions;
+
 	std::optional<OnnxSession> decoderSession;
+	Ort::SessionOptions decoderOptions;
+
 	Ort::AllocatorWithDefaultOptions allocator;
-	
+	std::vector<OrtTensorRTProviderOptionsV2*> providerPointers;
+
+	void processProvider(Ort::SessionOptions& options, const TensorRTProviderBuilder& providerConfigPtr);
 public:
-	Sam3Model(const OnnxSessionPartial& imageEncoder, const OnnxSessionPartial& textEncoder, const OnnxSessionPartial& decoder, TensorRTProviderBuilder& trtBuilder);
+	Sam3Model(
+		const OnnxSessionPartial& imageEncoder,
+		const TensorRTProviderBuilder& imageEncoderBuilder,
+		const OnnxSessionPartial& textEncoder,
+		const TensorRTProviderBuilder& textEncoderBuilder,
+		const OnnxSessionPartial& decoder,
+		const TensorRTProviderBuilder& decoderBuilder
+	);
 	
 	std::vector<Ort::Value> runImageEncoder(TensorImage& image);
 	// TODO: REMOVE ME! This is very temp so that we can extract MemoryINFO and use it in the same loop for the skeleton code
@@ -33,4 +48,6 @@ public:
 	std::vector<Ort::Value> runTextEncoder(LanguageTensor& language);
 	// TODO: so temp...
 	std::vector<Ort::Value> runDecoder(std::vector<Ort::Value> tensors);
+
+	~Sam3Model();
 };

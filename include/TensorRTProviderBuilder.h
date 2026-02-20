@@ -13,13 +13,11 @@ private:
 	bool useFP32NormFallback = false;
 public:
 	TensorRTProviderBuilder() {};
-	void withCachePath(const std::string& newValue);
-	void withDeviceId(const int newValue);
-	void withGpuMemorySize(const long newValue);
-	void isFP16Enabled(const bool newValue);
-	void isFP32NormFallback(const bool newValue);
+	TensorRTProviderBuilder& withCachePath(const std::string& newValue);
+	TensorRTProviderBuilder& withDeviceId(const int newValue);
+	TensorRTProviderBuilder& withGpuMemorySize(const long newValue);
+	TensorRTProviderBuilder& isFP16Enabled(const bool newValue);
+	TensorRTProviderBuilder& isFP32NormFallback(const bool newValue);
 	
-	OrtTensorRTProviderOptions build() const;
-	bool mountToSessionOptions(Ort::SessionOptions& sessionOptions, const bool noFail) const;
-
+	OrtTensorRTProviderOptionsV2* build() const;
 };
