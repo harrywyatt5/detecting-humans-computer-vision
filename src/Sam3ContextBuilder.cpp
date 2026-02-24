@@ -62,6 +62,7 @@ void Sam3ContextBuilder::withEngineCacheDir(const std::string& location) {
 }
 
 Sam3Context build() const {
+    Ort::Env env(loggingLevel, applicationName.c_str());
     auto api = Ort::GetApi();
 
     Ort::SessionOptions sessionOptions;
@@ -92,7 +93,7 @@ Sam3Context build() const {
     sessionOptions.SetInterOpNumThreads(maxCPUThreads);
 
     return Sam3Context(
-        Ort::Env(loggingLevel, applicationName.c_str()),
+        env,
         sessionOptions,
         Ort::MemoryInfo("Cuda", OrtDeviceAllocator, deviceId, OrtMemTypeDefault),
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)
