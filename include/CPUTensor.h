@@ -12,4 +12,5 @@ protected:
 private:
     CPUTensor(T* start, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor) 
         : GenericTensor(start, size, std::move(tensorShape), std::move(tensor)) {}
+        
 };
