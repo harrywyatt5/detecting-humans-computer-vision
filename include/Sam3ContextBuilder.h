@@ -15,6 +15,9 @@ private:
     OrtCUDAProviderOptions cudaOptions;
 
     std::string applicationName;
+    std::string textEncoderPath;
+    std::string visionEncoderPath;
+    std::string decoderPath;
     int maxCPUThreads;
     int deviceId;
     OrtLoggingLevel loggingLevel;
@@ -30,6 +33,9 @@ public:
     void withCPUThreadMax(const int count); 
     void withMaxGPUMemory(const uint64_t max);
     void withEngineCacheDir(const std::string& location);
+    void withTextEncoderPath(const std::string& location);
+    void withVisionEncoderPath(const std::string& location);
+    void withDecoderPath(const std::string& location);
     Sam3Context build() const;
 
     ~Sam3ContextBuilder() = default;

@@ -8,7 +8,7 @@ file(GLOB ONNXRUNTIME_WC_INCLUDES
 )
 file(GLOB ONNXRUNTIME_WC_LIBS
 	"/opt/onnx*/lib"
-	"/usr/local/onnx*/lib",
+	"/usr/local/onnx*/lib"
 	"$ENV{HOME}/onnx*/lib"
 )
 

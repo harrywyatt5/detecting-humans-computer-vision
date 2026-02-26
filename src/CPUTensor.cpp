@@ -1,8 +1,11 @@
 #include "CPUTensor.h"
 
+#include "Sam3Context.h"
 #include <onnxruntime_cxx_api.h>
 #include <vector>
 #include <cstdint>
+#include <memory>
+#include <algorithm>
 
 template<typename T>
 void CPUTensor<T>::releaseMemory() {
@@ -19,12 +22,25 @@ CPUTensor<T>::~CPUTensor() {
 }
 
 template<typename T>
-template<typename E>
-CPUTensor<E> CPUTensor<T>::createCPUTensor(std::vector<int64_t> tensorSize, const Ort::MemoryInfo& cpuMemoryInfo) {
-    size_t numValues = GenericTensor<E>::getTensorCountFromShape(tensorSize);
+void CPUTensor<T>::copyToBuffer(const std::vector<T>& sourceBuffer) {
+    if (sourceBuffer.size() != this->size) {
+        throw std::runtime_error(
+            "src should be the same size as tensor buffer. Target: "
+            + std::to_string(this->size) 
+            + ". Actual: " 
+            + std::to_string(sourceBuffer.size())
+        );
+    }
 
-    E* ptr = (E*)malloc(numValues * sizeof(E));
+    std::copy(sourceBuffer.begin(), sourceBuffer.end(), self->start);
+}
 
-    auto tensor = Ort::Value::CreateTensor<E>(cpuMemoryInfo, ptr, numValues, tensorSize.data(), tensorSize.size());
-    return CPUTensor<E>(ptr, numValues, std::move(tensorSize), std::move(tensor));
+template<typename T>
+std::unique_ptr<CPUTensor<T>> CPUTensor<T>::createCPUTensor(std::vector<int64_t> tensorSize, const Sam3Context& samContext) {
+    size_t numValues = GenericTensor<T>::getTensorCountFromShape(tensorSize);s
+
+    T* ptr = (T*)malloc(numValues * sizeof(T));
+
+    auto tensor = Ort::Value::CreateTensor<T>(samContext.getCpuMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
+    return std::make_unique<CPUTensor<T>>(ptr, numValues, std::move(tensorSize), std::move(tensor));
 }

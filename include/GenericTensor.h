@@ -21,6 +21,7 @@ protected:
 
     static size_t getTensorCountFromShape(const std::vector<int64_t>& shape);
 public:
+    virtual void copyToBuffer(const std::vector<T>& sourceBuffer) = 0;
     T* getStartPtr() {
         return start;
     }

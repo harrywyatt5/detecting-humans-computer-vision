@@ -6,8 +6,12 @@
 
 Sam3ContextBuilder::Sam3ContextBuilder() {
     applicationName = "Sam3Model";
+    textEncoderPath = "./sam3-onnx/text-encoder-fp16.onnx";
+    visionEncoderPath = "./sam3-onnx/vision-encoder-fp16.onnx";
+    decoderPath = "./sam3-onnx/geo-encoder-mask-decoder-fp16.onnx";
     loggingLevel = ORT_LOGGING_LEVEL_WARNING;
-    optimisationLevel = GraphOptimzationLevel::ORT_ENABLE_ALL;
+    optimisationLevel = GraphOptimizationLevel::ORT_ENABLE_ALL;
+    deviceId = 0;
     cudaOptions.device_id = 0;
     maxCPUThreads = 1;
 
@@ -61,7 +65,19 @@ void Sam3ContextBuilder::withEngineCacheDir(const std::string& location) {
     tensorRTOptions[4] = location;
 }
 
-Sam3Context build() const {
+void Sam3ContextBuilder::withTextEncoderPath(const std::string& location) {
+    textEncoderPath = location;
+}
+
+void Sam3ContextBuilder::withVisionEncoderPath(const std::string& location) {
+    visionEncoderPath = location;
+}
+
+void Sam3ContextBuilder::withDecoderPath(const std::string& location) {
+    decoderPath = location;
+}
+
+Sam3Context Sam3ContextBuilder::build() const {
     Ort::Env env(loggingLevel, applicationName.c_str());
     auto api = Ort::GetApi();
 
@@ -93,8 +109,12 @@ Sam3Context build() const {
     sessionOptions.SetInterOpNumThreads(maxCPUThreads);
 
     return Sam3Context(
-        env,
-        sessionOptions,
+        std::move(env),
+        std::move(sessionOptions),
+        deviceId,
+        std::move(textEncoderPath),
+        std::move(visionEncoderPath),
+        std::move(decoderPath),
         Ort::MemoryInfo("Cuda", OrtDeviceAllocator, deviceId, OrtMemTypeDefault),
         Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)
     );
