@@ -26,7 +26,7 @@ function check_models_installed {
 if [[ -d "${INSTALL_LOC}" ]]; then
     check_models_installed
 else 
-    mkdir sam3-models
+    mkdir "${INSTALL_LOC}"
 fi
 
 # Download

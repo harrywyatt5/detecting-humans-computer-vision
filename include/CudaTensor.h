@@ -12,10 +12,11 @@ protected:
     void releaseMemory() override;
 private:
     CudaTensor(T* start, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor) 
-            : GenericTensor(start, size, std::move(tensorShape), std::move(tensor)) {};
+            : GenericTensor<T>(start, size, std::move(tensorShape), std::move(tensor)) {};
 public:
     ~CudaTensor();
 
     // Static
-    static CudaTensor createCudaTensor<T>(std::vector<int64_t>& tensorSize, const Ort::MemoryInfo& gpuMemoryInfo);
+    template<typename E>
+    static CudaTensor<E> createCudaTensor(std::vector<int64_t> tensorSize, const Ort::MemoryInfo& gpuMemoryInfo);
 };

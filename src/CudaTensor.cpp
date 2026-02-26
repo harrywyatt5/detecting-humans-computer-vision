@@ -1,15 +1,16 @@
 #include "CudaTensor.h"
+#include "GenericTensor.h"
 
 #include <stdexcept>
 #include <cuda_runtime.h>
 
 template<typename T>
-void CudaTensor<T>::releaseMemory() override {
-    if (start == nullptr) {
+void CudaTensor<T>::releaseMemory() {
+    if (this->start == nullptr) {
         return;
     }
 
-    auto result = cudaFree((void**)&start);
+    auto result = cudaFree((void**)&this->start);
 
     if (result != cudaSuccess) {
         throw std::runtime_error("Could not free CUDA memory...");
@@ -22,19 +23,17 @@ CudaTensor<T>::~CudaTensor() {
 }
 
 template<typename T>
-CudaTensor<T> CudaTensor::createCudaTensor<T>(std::vector<int64_t>& tensorSize, const Ort::MemoryInfo& gpuMemoryInfo) {
-    size_t numValues = 1;
-    for (size_t i = 0; i < tensorSize.size(); ++i) {
-        numValues *= tensorSize[i];
-    }
+template<typename E>
+CudaTensor<E> CudaTensor<T>::createCudaTensor(std::vector<int64_t> tensorSize, const Ort::MemoryInfo& gpuMemoryInfo) {
+    size_t numValues = GenericTensor<E>::getTensorCountFromShape(tensorSize);
 
-    T* ptr;
-    auto result = cudaMalloc((void*)&ptr, numValues * sizeof(T));
+    E* ptr;
+    auto result = cudaMalloc((void**)&ptr, numValues * sizeof(E));
 
     if (result != cudaSuccess) {
         throw std::runtime_error("Allocating to CUDA device failed!");
     }
 
-    auto tensor = Ort::Value::CreateTensor<T>(gpuMemoryInfo, ptr, numValues, tensorSize.data(), tensorSize.size());
-    return CudaTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor));
+    auto tensor = Ort::Value::CreateTensor<E>(gpuMemoryInfo, ptr, numValues, tensorSize.data(), tensorSize.size());
+    return CudaTensor<E>(ptr, numValues, std::move(tensorSize), std::move(tensor));
 }

@@ -6,11 +6,16 @@
 #include <vector>
 #include <cstdint>
 
-class CPUTensor : public GenericTensor {
+template<typename T>
+class CPUTensor : public GenericTensor<T> {
 protected:
     void releaseMemory() override;
 private:
     CPUTensor(T* start, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor) 
-        : GenericTensor(start, size, std::move(tensorShape), std::move(tensor)) {}
-        
+        : GenericTensor<T>(start, size, std::move(tensorShape), std::move(tensor)) {}
+public:
+    ~CPUTensor();
+
+    template<typename E>
+    static CPUTensor<E> createCPUTensor(std::vector<int64_t> tensorSize, const Ort::MemoryInfo& cpuMemoryInfo);
 };

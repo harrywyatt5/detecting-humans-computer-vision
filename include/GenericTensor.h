@@ -18,6 +18,8 @@ protected:
     GenericTensor(T* ptr, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor) 
             : start(ptr), size(size), tensorShape(std::move(tensorShape)), tensor(std::move(tensor)) {}
     virtual void releaseMemory() = 0;
+
+    static size_t getTensorCountFromShape(const std::vector<int64_t>& shape);
 public:
     T* getStartPtr() {
         return start;
