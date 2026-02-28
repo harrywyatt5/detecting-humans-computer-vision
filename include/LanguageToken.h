@@ -11,7 +11,7 @@ private:
     std::vector<int64_t> data;
 
     // Private. Use createFromFile or createFromBuffer static functions
-    LanguageToken(std::vector<int64_t> dataVector) : data(std::move(dataVector)) {}
+    LanguageToken(std::vector<int64_t> dataVector);
 
     static int numOfTokens;
 public:

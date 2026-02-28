@@ -9,14 +9,19 @@
 
 int LanguageToken::numOfTokens = 32;
 
+LanguageToken::LanguageToken(std::vector<int64_t> dataVector) : data(std::move(dataVector)) {
+    if (data.size() != LanguageToken::numOfTokens) {
+        throw std::runtime_error("LanguageToken should contain exactly " + std::to_string(LanguageToken::numOfTokens) + " numbers!");
+    }
+}
+
 void LanguageToken::populateTensorWithToken(GenericTensor<int64_t>& tensor) const {
-    long bufferSize = LanguageToken::numOfTokens * sizeof(int64_t);
-    if (bufferSize != tensor.getSizeInBytes()) {
+    if (LanguageToken::numOfTokens != tensor.getSize()) {
         throw std::runtime_error(
             "Incompatible tensor provided. Tensor expected " 
-            + std::to_string(tensor.getSizeInBytes()) 
-            + " bytes but has " 
-            + std::to_string(bufferSize)
+            + std::to_string(tensor.getSize()) 
+            + " int64s but has " 
+            + std::to_string(LanguageToken::numOfTokens)
         );
     }
 
@@ -24,8 +29,8 @@ void LanguageToken::populateTensorWithToken(GenericTensor<int64_t>& tensor) cons
 }
 
 LanguageToken LanguageToken::createFromFile(const std::string& filePath) {
-    long bytesToRead = LanguageToken::numOfTokens * sizeof(int64_t);
-    int64_t* arr = new int64_t[LanguageToken::numOfTokens];
+    auto bytesToRead = LanguageToken::numOfTokens * sizeof(int64_t);
+    std::vector<int64_t> arr(LanguageToken::numOfTokens);
     std::ifstream fileBuffer(filePath, std::ios::in | std::ios::binary);
 
     // Throw if the file could not be found
@@ -33,16 +38,16 @@ LanguageToken LanguageToken::createFromFile(const std::string& filePath) {
         throw std::runtime_error("File containing LanguageToken was not found");
     }
 
-    fileBuffer.seekg(std::ios::end);
-    long byteCount = fileBuffer.tellg();
+    fileBuffer.seekg(0, std::ios::end);
+    auto byteCount = fileBuffer.tellg();
 
     if (byteCount != bytesToRead) {
         throw std::runtime_error("File does not have exactly " + std::to_string(LanguageToken::numOfTokens) + " tokens!");
     }
 
-    fileBuffer.seekg(std::ios::beg);
-    fileBuffer.read(reinterpret_cast<char*>(arr), bytesToRead);
+    fileBuffer.seekg(0, std::ios::beg);
+    fileBuffer.read(reinterpret_cast<char*>(arr.data()), bytesToRead);
     fileBuffer.close();
 
-    return LanguageToken(std::vector<int64_t>(arr, arr + LanguageToken::numOfTokens));
+    return LanguageToken(std::move(arr));
 }

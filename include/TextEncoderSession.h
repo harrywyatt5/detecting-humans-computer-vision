@@ -32,7 +32,7 @@ public:
         Ort::IoBinding bindings,
         std::unique_ptr<CPUTensor<int64_t>> inputIdsTensor,
         std::unique_ptr<CPUTensor<int64_t>> attentionMaskTensor,
-        std::shared_ptr<CudaTensor<bool>> textFeatureTensor,
+        std::shared_ptr<CudaTensor<bool>> textFeaturesTensor,
         std::shared_ptr<CudaTensor<float>> textMaskTensor
     ) : session(std::move(session)),
         bindings(std::move(bindings)),
