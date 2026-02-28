@@ -9,7 +9,6 @@
 #include <vector>
 #include <cstdint>
 #include <memory>
-#include <string>
 
 class TextEncoderSession : public AbstractSession {
 private:
