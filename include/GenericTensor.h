@@ -28,6 +28,9 @@ public:
     size_t getSize() const {
         return size;
     }
+    size_t getSizeInBytes() const {
+        return size * sizeof(T);
+    }
     const std::vector<int64_t>& getTensorShape() const {
         return tensorShape;
     }
