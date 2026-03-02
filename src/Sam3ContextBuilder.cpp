@@ -31,50 +31,61 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
     };
 }
 
-void Sam3ContextBuilder::withApplicationName(const std::string& name) {
+Sam3ContextBuilder& Sam3ContextBuilder::withApplicationName(const std::string& name) {
     applicationName = name;
+    return *this;
 }
 
-void Sam3ContextBuilder::withLoggingLevel(const OrtLoggingLevel& loggingLevel) {
+Sam3ContextBuilder& Sam3ContextBuilder::withLoggingLevel(const OrtLoggingLevel& loggingLevel) {
     this->loggingLevel = loggingLevel;
+    return *this;
 }
 
-void Sam3ContextBuilder::withGraphOptimistionLevel(const GraphOptimizationLevel& optimisationLevel) {
+Sam3ContextBuilder& Sam3ContextBuilder::withGraphOptimistionLevel(const GraphOptimizationLevel& optimisationLevel) {
     this->optimisationLevel = optimisationLevel;
+    return *this;
 }
 
-void Sam3ContextBuilder::withDeviceId(const int deviceId) {
+Sam3ContextBuilder& Sam3ContextBuilder::withDeviceId(const int deviceId) {
     this->deviceId = deviceId;
     cudaOptions.device_id = deviceId;
     tensorRTOptions[0] = std::to_string(deviceId);
+    return *this;
 }
 
-void Sam3ContextBuilder::withFP16Enabled(const bool enabled) {
+Sam3ContextBuilder& Sam3ContextBuilder::withFP16Enabled(const bool enabled) {
     tensorRTOptions[1] = enabled ? "1" : "0";
+    return *this;
 }
 
-void Sam3ContextBuilder::withCPUThreadMax(const int count) {
+Sam3ContextBuilder& Sam3ContextBuilder::withCPUThreadMax(const int count) {
     maxCPUThreads = count;
+    return *this;
 }
 
-void Sam3ContextBuilder::withMaxGPUMemory(const uint64_t max) {
+Sam3ContextBuilder& Sam3ContextBuilder::withMaxGPUMemory(const uint64_t max) {
     tensorRTOptions[2] = std::to_string(max);
+    return *this;
 }
 
-void Sam3ContextBuilder::withEngineCacheDir(const std::string& location) {
+Sam3ContextBuilder& Sam3ContextBuilder::withEngineCacheDir(const std::string& location) {
     tensorRTOptions[4] = location;
+    return *this;
 }
 
-void Sam3ContextBuilder::withTextEncoderPath(const std::string& location) {
+Sam3ContextBuilder& Sam3ContextBuilder::withTextEncoderPath(const std::string& location) {
     textEncoderPath = location;
+    return *this;
 }
 
-void Sam3ContextBuilder::withVisionEncoderPath(const std::string& location) {
+Sam3ContextBuilder& Sam3ContextBuilder::withVisionEncoderPath(const std::string& location) {
     visionEncoderPath = location;
+    return *this;
 }
 
-void Sam3ContextBuilder::withDecoderPath(const std::string& location) {
+Sam3ContextBuilder& Sam3ContextBuilder::withDecoderPath(const std::string& location) {
     decoderPath = location;
+    return *this;
 }
 
 Sam3Context Sam3ContextBuilder::build() const {

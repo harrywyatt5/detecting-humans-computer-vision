@@ -17,7 +17,7 @@ std::unique_ptr<AbstractSession> TextEncoderSessionFactory::createSession(const 
     // Outputs
     // Our inputs are only ever one because we only ever input one text prompt at a time
     auto textFeatures = CudaTensor<float>::createCudaTensor({1, 32, 256}, context);
-    auto textMask = CudaTensor<bool>::createCudaTensor({1, 32}, context);
+    auto textMask = CudaTensor<uint8_t>::createBoolCudaTensor({1, 32}, context);
 
     auto session = std::make_unique<Ort::Session>(context.getEnvironment(), context.getTextEncoderPath().c_str(), context.getSessionOptions());
     // As the session is allocated on the heap, it should be no problem that we are moving these pieces of data

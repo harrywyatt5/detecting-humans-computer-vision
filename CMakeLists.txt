@@ -13,18 +13,18 @@ target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/
 
 # Dependencies
 find_package(OpenCV REQUIRED)
-#find_package(CUDAToolkit REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 find_package(OnnxRuntime REQUIRED)
 
 # Link to our libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
 	${OpenCV_LIBS}
 	OnnxRuntime::OnnxRuntime
-#	CUDA::cudart
+	CUDA::cudart
 )
 
 # Create a directory for the model cache
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/model_cache")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/.engine-cache")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/sam3-onnx" 
 	DESTINATION "${CMAKE_BINARY_DIR}"
 )

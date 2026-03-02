@@ -19,7 +19,14 @@ protected:
             : start(ptr), size(size), tensorShape(std::move(tensorShape)), tensor(std::move(tensor)) {}
     virtual void releaseMemory() = 0;
 
-    static size_t getTensorCountFromShape(const std::vector<int64_t>& shape);
+    static size_t getTensorCountFromShape(const std::vector<int64_t>& shape) {
+        size_t count = 1;
+        for (auto i = 0; i < shape.size(); ++i) {
+            count *= shape[i];
+        }
+
+        return count;
+    }
 public:
     virtual void copyToBuffer(const std::vector<T>& sourceBuffer) = 0;
     T* getStartPtr() {

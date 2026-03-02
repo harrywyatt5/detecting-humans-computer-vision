@@ -1,16 +1,16 @@
 #pragma once
 
-#include "AbstractSession.h"
 #include "CPUTensor.h"
 #include "CudaTensor.h"
 #include "LanguageToken.h"
+#include "StartFlowSession.h"
 
 #include <onnxruntime_cxx_api.h>
 #include <vector>
 #include <cstdint>
 #include <memory>
 
-class TextEncoderSession : public AbstractSession {
+class TextEncoderSession : public StartFlowSession<LanguageToken> {
 private:
     // Actual ORT details
     std::unique_ptr<Ort::Session> session;
@@ -19,11 +19,8 @@ private:
     std::unique_ptr<CPUTensor<int64_t>> inputIdsTensor;
     std::unique_ptr<CPUTensor<int64_t>> attentionMaskTensor;
     // We use a shared pointer for the textFeatures and textMasks because they are the inputs to the decoder...
-    std::shared_ptr<CudaTensor<bool>> textFeaturesTensor;
-    std::shared_ptr<CudaTensor<float>> textMaskTensor;
-
-    bool isInitialised;
-    void throwOnUninitialised() const;
+    std::shared_ptr<CudaTensor<float>> textFeaturesTensor;
+    std::shared_ptr<CudaTensor<uint8_t>> textMaskTensor;
 public:
     // You should generally use TextEncoderSessionFactory rather than calling this method yourself...
     TextEncoderSession(
@@ -31,17 +28,17 @@ public:
         Ort::IoBinding bindings,
         std::unique_ptr<CPUTensor<int64_t>> inputIdsTensor,
         std::unique_ptr<CPUTensor<int64_t>> attentionMaskTensor,
-        std::shared_ptr<CudaTensor<bool>> textFeaturesTensor,
-        std::shared_ptr<CudaTensor<float>> textMaskTensor
+        std::shared_ptr<CudaTensor<float>> textFeaturesTensor,
+        std::shared_ptr<CudaTensor<uint8_t>> textMaskTensor
     ) : session(std::move(session)),
         bindings(std::move(bindings)),
         inputIdsTensor(std::move(inputIdsTensor)),
         attentionMaskTensor(std::move(attentionMaskTensor)),
         textFeaturesTensor(std::move(textFeaturesTensor)),
         textMaskTensor(std::move(textMaskTensor)),
-        isInitialised(false) {}
+        StartFlowSession<LanguageToken>() {}
 
-    void initialiseSession(const LanguageToken& token);
+    void initialiseSession(const LanguageToken& token) override;
     void run() override;
     std::vector<Ort::Value> runWithResult() override;
 };
