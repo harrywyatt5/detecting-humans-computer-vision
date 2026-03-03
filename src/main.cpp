@@ -2,6 +2,8 @@
 #include "PersistentSam3Model.h"
 #include "Sam3ContextBuilder.h"
 #include "TextEncoderSessionFactory.h"
+#include "PersistentImageInputFactory.h"
+#include "VisionEncoderSessionFactory.h"
 #include <onnxruntime_c_api.h>
 
 int main() {
@@ -19,7 +21,7 @@ int main() {
                             .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_ALL)
                             .withLoggingLevel(ORT_LOGGING_LEVEL_WARNING)
                             .build();
-
+    auto imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
     auto persistentModel = PersistentSam3Model(
         TextEncoderSessionFactory().createSession(sam3ModelContext),
         nullptr,

@@ -5,7 +5,7 @@
 #include <vector>
 #include <stdexcept>
 
-void TextEncoderSession::initialiseSession(const LanguageToken& token) {
+void TextEncoderSession::initialiseSession(LanguageToken& token) {
     // This fills in the int64_t to find our target
     token.populateTensorWithToken(*inputIdsTensor);
 
@@ -16,17 +16,11 @@ void TextEncoderSession::initialiseSession(const LanguageToken& token) {
 }
 
 void TextEncoderSession::run() {
-    throwOnUninitialised();
+    thowIfNotInitialised();
     this->session->Run(Ort::RunOptions{nullptr}, bindings);
 }
 
 std::vector<Ort::Value> TextEncoderSession::runWithResult() {
     run();
     return bindings.GetOutputValues();
-}
-
-void TextEncoderSession::throwOnUninitialised() const {
-    if (!this->isInitialised) {
-        throw std::runtime_error("TextEncoderSession cannot be run before it has been initialised. Use TextEncoderSession::initialiseSession first!");
-    }
 }

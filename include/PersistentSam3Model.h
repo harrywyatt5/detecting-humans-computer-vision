@@ -10,10 +10,10 @@ class PersistentSam3Model {
 private:
     bool hasGeneratedTextEncodings;
     std::unique_ptr<TextEncoderSession> textEncoderSession;
-    std::unique_ptr<AbstractSession> visionEncoderSession;
-    std::unique_ptr<AbstractSession> decoder;
+    std::unique_ptr<VisionEncoderSession> visionEncoderSession;
+    std::unique_ptr<MaskDecoderSession> decoder;
 public:
     PersistentSam3Model(std::unique_ptr<AbstractSession> textEncoder, std::unique_ptr<AbstractSession> visionEncoder, std::unique_ptr<AbstractSession> decoder);
-    void mountAndCalculatePrompt(const LanguageToken& token);
+    void mountAndCalculatePrompt(LanguageToken& token);
     cv::Mat detect(const cv::Mat& inputImage);
 };

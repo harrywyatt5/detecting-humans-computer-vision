@@ -14,6 +14,6 @@ protected:
         }
     }
 public:
-    virtual void initialiseSession(const T& initialiser) = 0;
+    virtual void initialiseSession(T& initialiser) = 0;
     virtual ~StartFlowSession<T>() = default;
 };

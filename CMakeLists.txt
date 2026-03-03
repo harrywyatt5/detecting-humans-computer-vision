@@ -7,7 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # Collect cpp files and target them for compilation, then add our headers
-file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+set(SOURCES
+	src/main.cpp
+	src/LanguageToken.cpp
+	src/NormaliseImageKernel.cu
+	src/PersistentImageInput.cpp
+	src/PersistentSam3Model.cpp
+	src/Sam3Context.cpp
+	src/Sam3ContextBuilder.cpp
+	src/TextEncoderSession.cpp
+	src/TextEncoderSessionFactory.cpp
+	src/PersistentImageInputFactory.cpp
+	src/VisionEncoderSession.cpp
+	src/VisionEncoderSessionFactory.cpp
+)
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 

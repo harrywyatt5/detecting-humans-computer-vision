@@ -38,7 +38,7 @@ public:
         textMaskTensor(std::move(textMaskTensor)),
         StartFlowSession<LanguageToken>() {}
 
-    void initialiseSession(const LanguageToken& token) override;
+    void initialiseSession(LanguageToken& token) override;
     void run() override;
     std::vector<Ort::Value> runWithResult() override;
 };

@@ -36,6 +36,7 @@ public:
 
         std::copy(sourceBuffer.begin(), sourceBuffer.end(), this->start);
     }
+
     ~CPUTensor() {
         releaseMemory();
     }

@@ -10,12 +10,17 @@ __global__ void normaliseImage(const cv::cuda::PtrStepSz<uchar3> src, float* dst
         return;
     }
 
-    float r = ((src(y, x).x / 255.0f) - 0.485f) / 0.229f;
-    float g = ((src(y, x).y / 255.0f) - 0.456f) / 0.224f;
-    float b = ((src(y, x).z / 255.0f) - 0.406f) / 0.225f;
+    // ImageNet normalisation values (minus)
+    uchar3 currPixel = src(y, x);
+    float r = ((currPixel.x / 255.0f) - 0.485f) / 0.229f;
+    float g = ((currPixel.y / 255.0f) - 0.456f) / 0.224f;
+    float b = ((currPixel.z / 255.0f) - 0.406f) / 0.225f;
 
     // We wanna format the image as RRR... GGG... BBB... in a flat array
-    dst[]
+    long pixelCount = src.cols * src.rows;
+    dst[y * src.cols + x] = r;
+    dst[pixelCount + y * src.cols + x] = g;
+    dst[2 * pixelCount + y * src.cols + x] = b;
 }
 
 void launchNormaliseImage(const cv::cuda::GpuMat& mat, cv::cuda::Stream& stream, float* dst) {
@@ -23,5 +28,5 @@ void launchNormaliseImage(const cv::cuda::GpuMat& mat, cv::cuda::Stream& stream,
     dim3 grid((mat.cols + block.x - 1) / block.x, (mat.rows + block.y - 1) / block.y);
 
     cudaStream_t cudaStream = cv::cuda::StreamAccessor::getStream(stream);
-    normaliseImage<<<block, grid, 0, cudaStream>>>(mat, dst);
+    normaliseImage<<<grid, block, 0, cudaStream>>>(mat, dst);
 }

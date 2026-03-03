@@ -10,6 +10,7 @@ class PersistentImageInput {
 private:
     cv::cuda::GpuMat resizedImage;
     cv::cuda::GpuMat gpuImage;
+    cv::cuda::Stream stream;
     int x;
     int y;
     int resizedX;
@@ -17,9 +18,9 @@ private:
 
     bool hasUploadedImage;
 public:
-    PersistentImageInput(int imageX, int imageY, int resizedX, int resizedY);
+    PersistentImageInput(int imageX, int imageY, int resizedX, int resizedY, int deviceId);
     void uploadImageFromDisk(const std::string& path);
     // TODO: implement this!
     void uploadImageFromSensorMsg() {};
-    void writeImageToTensor(const CudaTensor<float>& tensor) const;
+    void writeImageToTensor(CudaTensor<float>& tensor);
 };

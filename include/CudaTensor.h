@@ -65,6 +65,10 @@ public:
         }
     }
 
+    void setCudaDeviceToTensor() const {
+        changeCudaDevice(deviceId);
+    }
+
     ~CudaTensor() {
         releaseMemory();
     }
