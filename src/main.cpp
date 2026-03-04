@@ -24,7 +24,7 @@ int main() {
     auto imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
     auto persistentModel = PersistentSam3Model(
         TextEncoderSessionFactory().createSession(sam3ModelContext),
-        nullptr,
+        VisionEncoderSessionFactory().createSession(sam3ModelContext),
         nullptr
     );
     persistentModel.mountAndCalculatePrompt(languageToken);

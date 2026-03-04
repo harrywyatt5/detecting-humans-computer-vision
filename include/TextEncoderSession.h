@@ -41,4 +41,8 @@ public:
     void initialiseSession(LanguageToken& token) override;
     void run() override;
     std::vector<Ort::Value> runWithResult() override;
+
+    // Getters
+    std::shared_ptr<CudaTensor<float>> getTextFeaturesTensor();
+    std::shared_ptr<CudaTensor<uint8_t>> getTextMaskTensor();
 };

@@ -31,7 +31,7 @@ void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
 
 void PersistentImageInput::writeImageToTensor(CudaTensor<float>& tensor) {
     auto tensorShape = tensor.getTensorShape();
-    if (tensorShape.size() != 3 || tensorShape[0] != 3 || tensorShape[1] != resizedX || tensorShape[2] != resizedY) {
+    if (tensorShape.size() != 4 || tensorShape[0] != 1 || tensorShape[1] != 3 || tensorShape[2] != resizedX || tensorShape[3] != resizedY) {
         throw std::runtime_error("Tensor is not the correct shape to insert an image into. Aborting...");
     }
 

@@ -38,4 +38,10 @@ public:
     void initialiseSession(PersistentImageInput& image) override;
     void run() override;
     std::vector<Ort::Value> runWithResult() override;
+
+    // Getters
+    std::shared_ptr<CudaTensor<float>> getFpnFeat0Tensor();
+    std::shared_ptr<CudaTensor<float>> getFpnFeat1Tensor();
+    std::shared_ptr<CudaTensor<float>> getFpnFeat2Tensor();
+    std::shared_ptr<CudaTensor<float>> getFpnPos2Tensor();
 };

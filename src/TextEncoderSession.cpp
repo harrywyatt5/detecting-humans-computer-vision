@@ -1,7 +1,10 @@
 #include "TextEncoderSession.h"
 
 #include "LanguageToken.h"
+#include "CudaTensor.h"
 #include <onnxruntime_cxx_api.h>
+#include <memory>
+#include <cstdint>
 #include <vector>
 #include <stdexcept>
 
@@ -23,4 +26,12 @@ void TextEncoderSession::run() {
 std::vector<Ort::Value> TextEncoderSession::runWithResult() {
     run();
     return bindings.GetOutputValues();
+}
+
+std::shared_ptr<CudaTensor<float>> TextEncoderSession::getTextFeaturesTensor() {
+    return textFeaturesTensor;
+}
+
+std::shared_ptr<CudaTensor<uint8_t>> TextEncoderSession::getTextMaskTensor() {
+    return textMaskTensor;
 }
