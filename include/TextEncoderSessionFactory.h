@@ -1,13 +1,11 @@
 #pragma once
 
-#include "AbstractSession.h"
-#include "AbstractStartSessionFactory.h"
 #include "TextEncoderSession.h"
 #include "Sam3Context.h"
 #include <memory>
 
-class TextEncoderSessionFactory : public AbstractStartSessionFactory {
+class TextEncoderSessionFactory {
 public:
     TextEncoderSessionFactory() {};
-    std::unique_ptr<AbstractSession> createSession(const Sam3Context& context) const override;
+    std::unique_ptr<TextEncoderSession> createSession(const Sam3Context& context) const;
 };

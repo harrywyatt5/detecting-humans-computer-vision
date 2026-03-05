@@ -1,11 +1,10 @@
 #pragma once
 
 #include "VisionEncoderSession.h"
-#include "AbstractStartSessionFactory.h"
 #include <memory>
 
-class VisionEncoderSessionFactory : public AbstractStartSessionFactory {
+class VisionEncoderSessionFactory {
 public:
     VisionEncoderSessionFactory() {}
-    std::unique_ptr<AbstractSession> createSession(const Sam3Context& samContext) const override;
+    std::unique_ptr<VisionEncoderSession> createSession(const Sam3Context& samContext) const;
 };

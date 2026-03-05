@@ -47,7 +47,7 @@ public:
         if (sourceBuffer.size() != this->size) {
             throw std::runtime_error(
                 std::string("src should be the same size as tensor buffer. Target: ")
-                + std::to_string(this->size) 
+                + std::to_string(this->size * sizeof(T)) 
                 + ". Actual: " 
                 + std::to_string(sourceBuffer.size())
             );
@@ -58,7 +58,7 @@ public:
         if (result != cudaSuccess) {
             throw std::runtime_error(
                 std::string("Could not copy ")
-                + std::to_string(this->size) 
+                + std::to_string(this->size * sizeof(T)) 
                 + std::string(" bytes to CUDA device. Reason ") 
                 + cudaGetErrorString(result)
             );
@@ -85,7 +85,8 @@ public:
         if (result != cudaSuccess) {
             throw std::runtime_error("Allocating to CUDA device failed!");
         }
-
+        
+        // TODO: if CreateTensor throws, make sure to free cudaMalloc
         auto tensor = Ort::Value::CreateTensor<T>(samContext.getCudaMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
         return std::unique_ptr<CudaTensor<T>>(new CudaTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor), samContext.getDeviceId()));
     }

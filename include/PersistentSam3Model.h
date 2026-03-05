@@ -3,6 +3,9 @@
 #include "AbstractSession.h"
 #include "LanguageToken.h"
 #include "TextEncoderSession.h"
+#include "VisionEncoderSession.h"
+#include "MaskDecoderSession.h"
+#include "PersistentImageInput.h"
 #include <opencv2/opencv.hpp>
 #include <memory>
 
@@ -12,8 +15,15 @@ private:
     std::unique_ptr<TextEncoderSession> textEncoderSession;
     std::unique_ptr<VisionEncoderSession> visionEncoderSession;
     std::unique_ptr<MaskDecoderSession> decoder;
+
+    void throwIfNoTextEncodings() const;
 public:
-    PersistentSam3Model(std::unique_ptr<AbstractSession> textEncoder, std::unique_ptr<AbstractSession> visionEncoder, std::unique_ptr<AbstractSession> decoder);
+    PersistentSam3Model(
+        std::unique_ptr<TextEncoderSession> textEncoder,
+        std::unique_ptr<VisionEncoderSession> visionEncoder,
+        std::unique_ptr<MaskDecoderSession> decoder
+    ) : textEncoderSession(std::move(textEncoder)), visionEncoderSession(std::move(visionEncoder)), decoder(std::move(decoder)) {}
+
     void mountAndCalculatePrompt(LanguageToken& token);
-    cv::Mat detect(const cv::Mat& inputImage);
+    void detect(PersistentImageInput& image);
 };

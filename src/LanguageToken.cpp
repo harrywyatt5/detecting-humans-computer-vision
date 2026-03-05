@@ -8,6 +8,8 @@
 #include <stdexcept>
 
 int LanguageToken::numOfTokens = 32;
+int64_t LanguageToken::endToken = 49407;
+int64_t LanguageToken::missingToken = 0;
 
 LanguageToken::LanguageToken(std::vector<int64_t> dataVector) : data(std::move(dataVector)) {
     if (data.size() != LanguageToken::numOfTokens) {
@@ -15,17 +17,35 @@ LanguageToken::LanguageToken(std::vector<int64_t> dataVector) : data(std::move(d
     }
 }
 
-void LanguageToken::populateTensorWithToken(GenericTensor<int64_t>& tensor) const {
-    if (LanguageToken::numOfTokens != tensor.getSize()) {
+void LanguageToken::populateTensorsWithToken(GenericTensor<int64_t>& textIds, GenericTensor<int64_t>& attentionMask) const {
+    if (textIds.getSize() != LanguageToken::numOfTokens) {
         throw std::runtime_error(
-            "Incompatible tensor provided. Tensor expected " 
-            + std::to_string(tensor.getSize()) 
+            "Incompatible textIds tensor provided. Tensor expected " 
+            + std::to_string(textIds.getSize()) 
             + " int64s but has " 
             + std::to_string(LanguageToken::numOfTokens)
         );
     }
 
-    tensor.copyToBuffer(this->data);
+    if (attentionMask.getSize() != LanguageToken::numOfTokens) {
+        throw std::runtime_error(
+            "Incompatible attentionMask tensor provided. Tensor expected " 
+            + std::to_string(textIds.getSize()) 
+            + " int64s but has " 
+            + std::to_string(LanguageToken::numOfTokens)
+        );
+    }
+
+    std::vector<int64_t> attentionMaskValues(LanguageToken::numOfTokens, 0);
+
+    for (auto i = 0; i < LanguageToken::numOfTokens; ++i) {
+        if (data[i] != LanguageToken::endToken && data[i] != LanguageToken::missingToken) {
+            attentionMaskValues[i] = 1;
+        }
+    }
+
+    textIds.copyToBuffer(this->data);
+    attentionMask.copyToBuffer(attentionMaskValues);
 }
 
 LanguageToken LanguageToken::createFromFile(const std::string& filePath) {

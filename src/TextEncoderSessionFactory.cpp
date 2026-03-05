@@ -1,6 +1,5 @@
 #include "TextEncoderSessionFactory.h"
 
-#include "AbstractSession.h"
 #include "TextEncoderSession.h"
 #include "Sam3Context.h"
 #include "CPUTensor.h"
@@ -9,7 +8,7 @@
 #include <memory>
 #include <cstdint>
 
-std::unique_ptr<AbstractSession> TextEncoderSessionFactory::createSession(const Sam3Context& context) const {
+std::unique_ptr<TextEncoderSession> TextEncoderSessionFactory::createSession(const Sam3Context& context) const {
     // Inputs
     auto inputIds = CPUTensor<int64_t>::createCPUTensor({1, 32}, context);
     auto attentionMasks = CPUTensor<int64_t>::createCPUTensor({1, 32}, context);

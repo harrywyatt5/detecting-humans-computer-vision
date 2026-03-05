@@ -10,11 +10,7 @@
 
 void TextEncoderSession::initialiseSession(LanguageToken& token) {
     // This fills in the int64_t to find our target
-    token.populateTensorWithToken(*inputIdsTensor);
-
-    // We don't use the attention mask bit (for tracking boxes), so just fill it in with zeros
-    attentionMaskTensor->copyToBuffer(std::vector<int64_t>(attentionMaskTensor->getSize(), 0));
-
+    token.populateTensorsWithToken(*inputIdsTensor, *attentionMaskTensor);
     this->isInitialised = true;
 }
 

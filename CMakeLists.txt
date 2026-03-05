@@ -1,9 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
-project(HumanDetectionTest CXX)
+project(HumanDetectionTest LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED True)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 # Collect cpp files and target them for compilation, then add our headers

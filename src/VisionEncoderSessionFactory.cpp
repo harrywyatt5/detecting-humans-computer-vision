@@ -6,7 +6,7 @@
 #include <onnxruntime_cxx_api.h>
 #include <memory>
 
-std::unique_ptr<AbstractSession> VisionEncoderSessionFactory::createSession(const Sam3Context& samContext) const {
+std::unique_ptr<VisionEncoderSession> VisionEncoderSessionFactory::createSession(const Sam3Context& samContext) const {
     auto imageTensor = CudaTensor<float>::createCudaTensor({1, 3, 1008, 1008}, samContext);
 
     auto fpnFeat0Tensor = CudaTensor<float>::createCudaTensor({1, 256, 288, 288}, samContext);

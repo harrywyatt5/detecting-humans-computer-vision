@@ -14,8 +14,10 @@ private:
     LanguageToken(std::vector<int64_t> dataVector);
 
     static int numOfTokens;
+    static int64_t endToken;
+    static int64_t missingToken;
 public:
-    void populateTensorWithToken(GenericTensor<int64_t>& targetTesnsor) const;
+    void populateTensorsWithToken(GenericTensor<int64_t>& textIds, GenericTensor<int64_t>& attentionMask) const;
 
     static LanguageToken createFromFile(const std::string& filePath);
     // TODO: implement createFromBuffer

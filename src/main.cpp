@@ -4,6 +4,7 @@
 #include "TextEncoderSessionFactory.h"
 #include "PersistentImageInputFactory.h"
 #include "VisionEncoderSessionFactory.h"
+#include "MaskDecoderSessionFactory.h"
 #include <onnxruntime_c_api.h>
 
 int main() {
@@ -22,12 +23,19 @@ int main() {
                             .withLoggingLevel(ORT_LOGGING_LEVEL_WARNING)
                             .build();
     auto imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
+    auto textEncoderSession = TextEncoderSessionFactory().createSession(sam3ModelContext);
+    auto visionEncoderSession = VisionEncoderSessionFactory().createSession(sam3ModelContext);
+    auto decoderSession = MaskDecoderSessionFactory().createSession(sam3ModelContext, *textEncoderSession, *visionEncoderSession);
     auto persistentModel = PersistentSam3Model(
-        TextEncoderSessionFactory().createSession(sam3ModelContext),
-        VisionEncoderSessionFactory().createSession(sam3ModelContext),
-        nullptr
+        std::move(textEncoderSession),
+        std::move(visionEncoderSession),
+        std::move(decoderSession)
     );
     persistentModel.mountAndCalculatePrompt(languageToken);
+
+    // Mount image
+    imageInput.uploadImageFromDisk("img.jpg");
+    persistentModel.detect(imageInput);
 
     return 0;
 }
