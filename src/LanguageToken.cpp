@@ -6,6 +6,7 @@
 #include <vector>
 #include <fstream>
 #include <stdexcept>
+#include <iostream>
 
 int LanguageToken::numOfTokens = 32;
 int64_t LanguageToken::endToken = 49407;
@@ -39,7 +40,7 @@ void LanguageToken::populateTensorsWithToken(GenericTensor<int64_t>& textIds, Ge
     std::vector<int64_t> attentionMaskValues(LanguageToken::numOfTokens, 0);
 
     for (auto i = 0; i < LanguageToken::numOfTokens; ++i) {
-        if (data[i] != LanguageToken::endToken && data[i] != LanguageToken::missingToken) {
+        if (data[i] != LanguageToken::missingToken) {
             attentionMaskValues[i] = 1;
         }
     }

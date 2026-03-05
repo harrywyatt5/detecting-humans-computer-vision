@@ -14,6 +14,8 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
     deviceId = 0;
     cudaOptions.device_id = 0;
     maxCPUThreads = 1;
+    batchLimit = 1;
+    numBoxesLimit = 1;
 
     tensorRTOptionsNames = {
         "device_id",
@@ -88,6 +90,16 @@ Sam3ContextBuilder& Sam3ContextBuilder::withDecoderPath(const std::string& locat
     return *this;
 }
 
+Sam3ContextBuilder& Sam3ContextBuilder::withBatchLimit(const int64_t count) {
+    batchLimit = count;
+    return *this;
+}
+
+Sam3ContextBuilder& Sam3ContextBuilder::withNumBoxesLimit(const int64_t count) {
+    numBoxesLimit = count;
+    return *this;
+}
+
 Sam3Context Sam3ContextBuilder::build() const {
     Ort::Env env(loggingLevel, applicationName.c_str());
     auto api = Ort::GetApi();
@@ -118,6 +130,15 @@ Sam3Context Sam3ContextBuilder::build() const {
     sessionOptions.SetGraphOptimizationLevel(optimisationLevel);
     sessionOptions.SetIntraOpNumThreads(maxCPUThreads);
     sessionOptions.SetInterOpNumThreads(maxCPUThreads);
+
+    // 0 means that batch is unbounded, and can be any value
+    if (batchLimit > 0) {
+        sessionOptions.AddFreeDimensionOverrideByName("batch", batchLimit);
+    }
+
+    if (numBoxesLimit > 0) {
+        sessionOptions.AddFreeDimensionOverrideByName("num_boxes", numBoxesLimit);
+    }
 
     return Sam3Context(
         std::move(env),

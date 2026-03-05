@@ -81,10 +81,13 @@ public:
 
         changeCudaDevice(samContext.getDeviceId());
         auto result = cudaMalloc((void**)&ptr, numValues * sizeof(T));
-
+        
         if (result != cudaSuccess) {
             throw std::runtime_error("Allocating to CUDA device failed!");
         }
+
+        // ADD THIS: Nuke residual garbage values immediately!
+        cudaMemset(ptr, 0, numValues * sizeof(T));
         
         // TODO: if CreateTensor throws, make sure to free cudaMalloc
         auto tensor = Ort::Value::CreateTensor<T>(samContext.getCudaMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
@@ -101,6 +104,9 @@ public:
         if (result != cudaSuccess) {
             throw std::runtime_error("Allocating to CUDA device failed!");
         }
+
+        // ADD THIS: Nuke residual garbage values immediately!
+        cudaMemset(ptr, 0, numValues * sizeof(T));
 
         auto tensor = Ort::Value::CreateTensor(samContext.getCudaMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size(), ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL);
         return std::unique_ptr<CudaTensor<uint8_t>>(new CudaTensor<uint8_t>(ptr, numValues, std::move(tensorSize), std::move(tensor), samContext.getDeviceId()));

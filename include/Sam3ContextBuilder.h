@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <cstdint>
 #include <onnxruntime_cxx_api.h>
 #include <onnxruntime_c_api.h>
 
@@ -19,6 +20,8 @@ private:
     std::string decoderPath;
     int maxCPUThreads;
     int deviceId;
+    int64_t batchLimit;
+    int64_t numBoxesLimit;
     OrtLoggingLevel loggingLevel;
     GraphOptimizationLevel optimisationLevel;
 public:
@@ -35,6 +38,8 @@ public:
     Sam3ContextBuilder& withTextEncoderPath(const std::string& location);
     Sam3ContextBuilder& withVisionEncoderPath(const std::string& location);
     Sam3ContextBuilder& withDecoderPath(const std::string& location);
+    Sam3ContextBuilder& withBatchLimit(const int64_t count);
+    Sam3ContextBuilder& withNumBoxesLimit(const int64_t count);
     Sam3Context build() const;
 
     ~Sam3ContextBuilder() = default;

@@ -21,10 +21,10 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
     auto textMasks = textEncoder.getTextMaskTensor();
 
     // We don't want to pass bounding boxes to track, so we block out these values
-    auto inputBoxes = CPUTensor<float>::createCPUTensor({1, 1, 4}, samContext);
+    auto inputBoxes = CudaTensor<float>::createCudaTensor({1, 1, 4}, samContext);
     inputBoxes->copyToBuffer(std::vector<float>(4, 0.0f));
     auto inputBoxLabels = CPUTensor<int64_t>::createCPUTensor({1, 1}, samContext);
-    inputBoxLabels->copyToBuffer(std::vector<int64_t>(1, 0));
+    inputBoxLabels->copyToBuffer(std::vector<int64_t>(1, -10));
 
     // We don't preallocate outputs unfortunately as we can have a varied number of outputs
     auto session = std::make_unique<Ort::Session>(samContext.getEnvironment(), samContext.getDecoderPath().c_str(), samContext.getSessionOptions());

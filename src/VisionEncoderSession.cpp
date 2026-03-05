@@ -14,6 +14,7 @@ void VisionEncoderSession::initialiseSession(PersistentImageInput& input) {
 void VisionEncoderSession::run() {
     thowIfNotInitialised();
     isInitialised = false;
+
     session->Run(Ort::RunOptions{nullptr}, bindings);
 }
 

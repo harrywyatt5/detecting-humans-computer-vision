@@ -45,6 +45,7 @@ public:
         size_t numValues = GenericTensor<T>::getTensorCountFromShape(tensorSize);
 
         T* ptr = (T*)malloc(numValues * sizeof(T));
+        std::memset(ptr, 0, numValues * sizeof(T));
 
         auto tensor = Ort::Value::CreateTensor<T>(samContext.getCpuMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
         return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));

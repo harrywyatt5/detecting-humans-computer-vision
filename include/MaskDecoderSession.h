@@ -2,6 +2,7 @@
 
 #include "AbstractSession.h"
 #include "CudaTensor.h"
+#include "CPUTensor.h"
 #include <memory>
 #include <vector>
 #include <cstdint>
@@ -20,7 +21,7 @@ private:
     std::shared_ptr<CudaTensor<float>> textFeatures;
     std::shared_ptr<CudaTensor<uint8_t>> textMasks;
     std::unique_ptr<CudaTensor<float>> inputBoxes;
-    std::unique_ptr<CudaTensor<int64_t>> inputBoxesLabels;
+    std::unique_ptr<CPUTensor<int64_t>> inputBoxesLabels;
 
     // Outputs
     // std::unique_ptr<CudaTensor<float>> predicateMasks;
@@ -38,7 +39,7 @@ public:
         std::shared_ptr<CudaTensor<float>> textFeatures,
         std::shared_ptr<CudaTensor<uint8_t>> textMasks,
         std::unique_ptr<CudaTensor<float>> inputBoxes,
-        std::unique_ptr<CudaTensor<int64_t>> inputBoxesLabels
+        std::unique_ptr<CPUTensor<int64_t>> inputBoxesLabels
     ) : session(std::move(session)),
         bindings(std::move(bindings)),
         fpnFeat0(std::move(fpnFeat0)),

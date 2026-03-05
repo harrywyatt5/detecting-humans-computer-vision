@@ -20,7 +20,9 @@ int main() {
                             .withDeviceId(0)
                             .withEngineCacheDir("./.engine-cache")
                             .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_ALL)
-                            .withLoggingLevel(ORT_LOGGING_LEVEL_WARNING)
+                            .withLoggingLevel(ORT_LOGGING_LEVEL_ERROR)
+                            .withBatchLimit(1)
+                            .withNumBoxesLimit(1)
                             .build();
     auto imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
     auto textEncoderSession = TextEncoderSessionFactory().createSession(sam3ModelContext);

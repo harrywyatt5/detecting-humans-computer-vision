@@ -34,7 +34,8 @@ public:
         fpnFeat0(std::move(fpnFeat0)),
         fpnFeat1(std::move(fpnFeat1)),
         fpnFeat2(std::move(fpnFeat2)),
-        fpnPos2(std::move(fpnPos2)) {}
+        fpnPos2(std::move(fpnPos2)),
+        StartFlowSession<PersistentImageInput>() {}
     void initialiseSession(PersistentImageInput& image) override;
     void run() override;
     std::vector<Ort::Value> runWithResult() override;
