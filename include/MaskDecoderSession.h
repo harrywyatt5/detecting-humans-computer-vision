@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AbstractSession.h"
+#include "UninitialisedSession.h"
 #include "CudaTensor.h"
 #include "CPUTensor.h"
 #include <memory>
@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <onnxruntime_cxx_api.h>
 
-class MaskDecoderSession : public AbstractSession {
+class MaskDecoderSession : public UninitialisedSession {
 private:
     std::unique_ptr<Ort::Session> session;
     Ort::IoBinding bindings;
@@ -49,10 +49,14 @@ public:
         textFeatures(std::move(textFeatures)),
         textMasks(std::move(textMasks)),
         inputBoxes(std::move(inputBoxes)),
-        inputBoxesLabels(std::move(inputBoxesLabels)) {}
+        inputBoxesLabels(std::move(inputBoxesLabels)),
+        UninitialisedSession() {}
 
     void run() override;
     std::vector<Ort::Value> runWithResult() override;
     // TODO: implement this
     void getFinalMask() {}
+
+    // Getters
+    std::shared_ptr<CudaTensor<uint8_t>> getTextMasksTensor();
 };

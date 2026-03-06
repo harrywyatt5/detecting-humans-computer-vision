@@ -34,7 +34,7 @@ void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
     this->hasUploadedImage = true;
 }
 
-void PersistentImageInput::writeImageToTensor(CudaTensor<float>& tensor) {
+void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
     if (!hasUploadedImage) throw std::runtime_error("No image uploaded!");
 
     // Check size

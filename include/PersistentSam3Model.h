@@ -5,7 +5,7 @@
 #include "TextEncoderSession.h"
 #include "VisionEncoderSession.h"
 #include "MaskDecoderSession.h"
-#include "PersistentImageInput.h"
+#include "ImageProvider.h"
 #include <opencv2/opencv.hpp>
 #include <memory>
 
@@ -24,6 +24,6 @@ public:
         std::unique_ptr<MaskDecoderSession> decoder
     ) : textEncoderSession(std::move(textEncoder)), visionEncoderSession(std::move(visionEncoder)), decoder(std::move(decoder)) {}
 
-    void mountAndCalculatePrompt(LanguageToken& token);
-    void detect(PersistentImageInput& image);
+    void mountAndCalculatePrompt(std::shared_ptr<LanguageToken> token);
+    void detect(std::shared_ptr<ImageProvider> imageProvider);
 };

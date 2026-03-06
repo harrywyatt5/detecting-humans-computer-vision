@@ -6,31 +6,38 @@
 #include "PersistentImageInput.h"
 #include "MaskDecoderSession.h"
 #include "AbstractSession.h"
+#include "TextEncoderInitialiser.h"
+#include "MaskDecoderInitialiser.h"
+#include "VisionEncoderInitialiser.h"
 #include <memory>
 #include <stdexcept>
 #include <opencv2/opencv.hpp>
 
-void PersistentSam3Model::mountAndCalculatePrompt(LanguageToken &token) {
-  textEncoderSession->initialiseSession(token);
+void PersistentSam3Model::mountAndCalculatePrompt(std::shared_ptr<LanguageToken> token) {
+    TextEncoderInitialiser textInit(token);
+    textInit.initialiseSession(*textEncoderSession);
+    MaskDecoderInitialiser maskInit(token);
+    maskInit.initialiseSession(*decoder);
 
-  // Once the token is actually in the buffer (above), we can run the session.
-  // This will populate the tensors in the TextEncoderSession so when they're
-  // referenced downstream they will have the correct values
-  textEncoderSession->run();
-  hasGeneratedTextEncodings = true;
+    // Once the token is actually in the buffer (above), we can run the session.
+    // This will populate the tensors in the TextEncoderSession so when they're
+    // referenced downstream they will have the correct values
+    textEncoderSession->run();
+    hasGeneratedTextEncodings = true;
 }
 
-void PersistentSam3Model::detect(PersistentImageInput& image) {
+void PersistentSam3Model::detect(std::shared_ptr<ImageProvider> imageProvider) {
     throwIfNoTextEncodings();
 
     // Load image into Vision tensor and run it
-    visionEncoderSession->initialiseSession(image);
+    VisionEncoderInitialiser visionInit(imageProvider);
+    visionInit.initialiseSession(*visionEncoderSession);
     visionEncoderSession->run();
 
     // Load decoder and find masks
     auto returnTensors = decoder->runWithResult();
 
-// DEBUG: Optimized Best-Mask Extraction with Shape Verification
+    // DEBUG: Optimized Best-Mask Extraction with Shape Verification
     try {
         int masksIdx = -1;
         int logitsIdx = -1;

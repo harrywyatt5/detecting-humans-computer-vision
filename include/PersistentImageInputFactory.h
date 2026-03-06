@@ -1,11 +1,12 @@
 #pragma once
 
 #include "PersistentImageInput.h"
+#include <memory>
 
 class PersistentImageInputFactory {
 public:
     PersistentImageInputFactory() {}
-    PersistentImageInput createPersistentImageInput(
+    std::unique_ptr<PersistentImageInput> createPersistentImageInput(
         int inputImageSizeX,
         int inputImageSizeY, 
         int intermediateSizeX,

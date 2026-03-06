@@ -9,14 +9,8 @@
 #include <stdexcept>
 #include <iostream>
 
-void TextEncoderSession::initialiseSession(LanguageToken& token) {
-    // This fills in the int64_t to find our target
-    token.populateTensorsWithToken(*inputIdsTensor, *attentionMaskTensor);
-    this->isInitialised = true;
-}
-
 void TextEncoderSession::run() {
-    thowIfNotInitialised();
+    throwIfNotInitialised();
     this->session->Run(Ort::RunOptions{nullptr}, bindings);
 }
 
@@ -31,4 +25,8 @@ std::shared_ptr<CudaTensor<float>> TextEncoderSession::getTextFeaturesTensor() {
 
 std::shared_ptr<CPUTensor<int64_t>> TextEncoderSession::getAttentionMaskTensor() {
     return attentionMaskTensor;
+}
+
+std::shared_ptr<CPUTensor<int64_t>> TextEncoderSession::getInputIdsTensor() {
+    return inputIdsTensor;
 }

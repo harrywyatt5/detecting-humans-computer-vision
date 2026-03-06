@@ -1,12 +1,13 @@
 #pragma once
 
 #include "CudaTensor.h"
+#include "ImageProvider.h"
 #include <vector>
 #include <cstdint>
 #include <string>
 #include <opencv2/opencv.hpp>
 
-class PersistentImageInput {
+class PersistentImageInput : public ImageProvider {
 private:
     cv::cuda::GpuMat resizedImage;
     cv::cuda::GpuMat gpuImage;
@@ -23,5 +24,5 @@ public:
     void uploadImageFromDisk(const std::string& path);
     // TODO: implement this!
     void uploadImageFromSensorMsg() {};
-    void writeImageToTensor(CudaTensor<float>& tensor);
+    void writeImageToCudaTensor(CudaTensor<float>& tensor) override;
 };

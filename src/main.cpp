@@ -9,7 +9,7 @@
 
 int main() {
     // Required objects
-    auto languageToken = LanguageToken::createFromFile("./language.token");
+    std::shared_ptr<LanguageToken> languageToken = LanguageToken::createFromFile("./language.token");
     auto sam3ModelContext = Sam3ContextBuilder()
                             .withApplicationName("RealTimeHumans")
                             .withCPUThreadMax(1)
@@ -24,7 +24,7 @@ int main() {
                             .withBatchLimit(1)
                             .withNumBoxesLimit(1)
                             .build();
-    auto imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
+    std::shared_ptr<PersistentImageInput> imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
     auto textEncoderSession = TextEncoderSessionFactory().createSession(sam3ModelContext);
     auto visionEncoderSession = VisionEncoderSessionFactory().createSession(sam3ModelContext);
     auto decoderSession = MaskDecoderSessionFactory().createSession(sam3ModelContext, *textEncoderSession, *visionEncoderSession);
@@ -36,7 +36,7 @@ int main() {
     persistentModel.mountAndCalculatePrompt(languageToken);
 
     // Mount image
-    imageInput.uploadImageFromDisk("img.jpg");
+    imageInput->uploadImageFromDisk("img.jpg");
     persistentModel.detect(imageInput);
 
     return 0;

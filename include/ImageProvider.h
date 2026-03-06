@@ -4,5 +4,5 @@
 
 class ImageProvider {
 public:
-    virtual void writeImageToCudaTensor(CudaTensor& cudaTensor) = 0;
+    virtual void writeImageToCudaTensor(CudaTensor<float>& cudaTensor) = 0;
 };

@@ -1,19 +1,19 @@
 #pragma once
 
 #include "CudaTensor.h"
+#include "UninitialisedSession.h"
 #include "PersistentImageInput.h"
-#include "StartFlowSession.h"
 #include <memory>
 #include <onnxruntime_cxx_api.h>
 #include <vector>
 
-class VisionEncoderSession : public StartFlowSession<PersistentImageInput> {
+class VisionEncoderSession : public UninitialisedSession {
 private:
     std::unique_ptr<Ort::Session> session;
     Ort::IoBinding bindings{nullptr};
 
     // Input
-    std::unique_ptr<CudaTensor<float>> image;
+    std::shared_ptr<CudaTensor<float>> image;
     // Outputs
     std::shared_ptr<CudaTensor<float>> fpnFeat0;
     std::shared_ptr<CudaTensor<float>> fpnFeat1;
@@ -23,7 +23,7 @@ public:
     VisionEncoderSession(
         std::unique_ptr<Ort::Session> session,
         Ort::IoBinding bindings,
-        std::unique_ptr<CudaTensor<float>> image,
+        std::shared_ptr<CudaTensor<float>> image,
         std::shared_ptr<CudaTensor<float>> fpnFeat0,
         std::shared_ptr<CudaTensor<float>> fpnFeat1,
         std::shared_ptr<CudaTensor<float>> fpnFeat2,
@@ -35,12 +35,13 @@ public:
         fpnFeat1(std::move(fpnFeat1)),
         fpnFeat2(std::move(fpnFeat2)),
         fpnPos2(std::move(fpnPos2)),
-        StartFlowSession<PersistentImageInput>() {}
-    void initialiseSession(PersistentImageInput& image) override;
+        UninitialisedSession() {}
+
     void run() override;
     std::vector<Ort::Value> runWithResult() override;
 
     // Getters
+    std::shared_ptr<CudaTensor<float>> getImageTensor();
     std::shared_ptr<CudaTensor<float>> getFpnFeat0Tensor();
     std::shared_ptr<CudaTensor<float>> getFpnFeat1Tensor();
     std::shared_ptr<CudaTensor<float>> getFpnFeat2Tensor();

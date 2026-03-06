@@ -6,13 +6,8 @@
 #include <vector>
 #include <onnxruntime_cxx_api.h>
 
-void VisionEncoderSession::initialiseSession(PersistentImageInput& input) {
-    input.writeImageToTensor(*image);
-    isInitialised = true;
-}
-
 void VisionEncoderSession::run() {
-    thowIfNotInitialised();
+    throwIfNotInitialised();
     isInitialised = false;
 
     session->Run(Ort::RunOptions{nullptr}, bindings);
@@ -21,6 +16,10 @@ void VisionEncoderSession::run() {
 std::vector<Ort::Value> VisionEncoderSession::runWithResult() {
     run();
     return bindings.GetOutputValues();
+}
+
+std::shared_ptr<CudaTensor<float>> VisionEncoderSession::getImageTensor() {
+    return image;
 }
 
 std::shared_ptr<CudaTensor<float>> VisionEncoderSession::getFpnFeat0Tensor() {
