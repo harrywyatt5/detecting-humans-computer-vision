@@ -1,9 +1,9 @@
 #include "PersistentImageInput.h"
-
 #include "CudaTensor.h"
 #include "NormaliseImageKernel.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudawarping.hpp>
+#include <cuda_runtime.h>
 #include <stdexcept>
 #include <string>
 
@@ -20,31 +20,31 @@ PersistentImageInput::PersistentImageInput(
 }
 
 void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
-    // We will do all the work on the CPU for this test to guarantee it matches
     auto img = cv::imread(path);
     if (img.empty()) throw std::runtime_error("Failed to load image at " + path);
 
-    // Use the exact same OpenCV function from your working code!
-    cv::Mat blob;
-    cv::dnn::blobFromImage(img, blob, 1.0 / 255.0, cv::Size(resizedX, resizedY), cv::Scalar(), true, false, CV_32F);
+    cv::Mat convertedImg;
+    cv::cvtColor(img, convertedImg, cv::COLOR_BGR2RGB);
+    gpuImage.upload(convertedImg, stream);
 
-    // Save the blob to our class so we can write it later
-    // The blob is already in NCHW format and scaled 0-1!
-    this->cpuBlob = blob.clone(); 
-    this->hasUploadedImage = true;
+    // Resize on the gpu as it can be parallelised
+    cv::cuda::resize(gpuImage, resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, stream);
+    hasUploadedImage = true;
 }
 
 void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
-    if (!hasUploadedImage) throw std::runtime_error("No image uploaded!");
+    auto tensorShape = tensor.getTensorShape();
+    if (tensorShape.size() != 4 || tensorShape[0] != 1 || tensorShape[1] != 3 || tensorShape[2] != resizedX || tensorShape[3] != resizedY) {
+        throw std::runtime_error("Tensor is not the correct shape to insert an image into. Aborting...");
+    }
 
-    // Check size
-    size_t numBytes = 1 * 3 * resizedX * resizedY * sizeof(float);
-    if (tensor.getSizeInBytes() != numBytes) throw std::runtime_error("Tensor size mismatch!");
-
-    // Copy the perfectly formatted NCHW blob directly to the ONNX GPU Tensor
     tensor.setCudaDeviceToTensor();
-    cudaMemcpy(tensor.getStartPtr(), cpuBlob.ptr<float>(), numBytes, cudaMemcpyHostToDevice);
-    
-    // Note: We don't need launchNormaliseImage for this test!
-}
+    launchNormaliseImage(resizedImage, stream, tensor.getStartPtr());
 
+    stream.waitForCompletion();
+    // Throw if the kernel crashes for some reason
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        throw std::runtime_error(std::string("Could not process image: ") + cudaGetErrorString(err));
+    }
+}

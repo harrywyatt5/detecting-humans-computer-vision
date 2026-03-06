@@ -6,6 +6,8 @@
 #include "VisionEncoderSessionFactory.h"
 #include "MaskDecoderSessionFactory.h"
 #include <onnxruntime_c_api.h>
+#include <chrono>
+#include <iostream>
 
 int main() {
     // Required objects
@@ -38,6 +40,13 @@ int main() {
     // Mount image
     imageInput->uploadImageFromDisk("img.jpg");
     persistentModel.detect(imageInput);
+
+    // Mount image
+    imageInput->uploadImageFromDisk("img2.jpg");
+    auto startTime = std::chrono::high_resolution_clock::now();
+    persistentModel.detect(imageInput);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    std::cout << "Taken " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() << std::endl;
 
     return 0;
 }

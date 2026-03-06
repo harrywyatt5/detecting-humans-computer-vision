@@ -12,12 +12,9 @@ __global__ void normaliseImage(const cv::cuda::PtrStepSz<uchar3> src, float* dst
 
     // ImageNet normalisation values (minus)
     uchar3 currPixel = src(y, x);
-    // float r = ((currPixel.x / 255.0f) - 0.485f) / 0.229f;
-    // float g = ((currPixel.y / 255.0f) - 0.456f) / 0.224f;
-    // float b = ((currPixel.z / 255.0f) - 0.406f) / 0.225f;
-    float r = (currPixel.x / 255.0f);
-    float g = (currPixel.y / 255.0f);
-    float b = (currPixel.z / 255.0f);
+    float r = currPixel.x / 255.0f;
+    float g = currPixel.y / 255.0f;
+    float b = currPixel.z / 255.0f;
 
     // We wanna format the image as RRR... GGG... BBB... in a flat array
     long pixelCount = src.cols * src.rows;

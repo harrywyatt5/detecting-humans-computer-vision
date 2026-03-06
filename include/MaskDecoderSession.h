@@ -24,10 +24,10 @@ private:
     std::unique_ptr<CPUTensor<int64_t>> inputBoxesLabels;
 
     // Outputs
-    // std::unique_ptr<CudaTensor<float>> predicateMasks;
-    // std::unique_ptr<CudaTensor<float>> predicateBoxes;
-    // std::unique_ptr<CudaTensor<float>> predicateLogits;
-    // std::unique_ptr<CudaTensor<float>> predicateLogic;
+    // std::shared_ptr<CudaTensor<float>> predicateMasks;
+    // std::shared_ptr<CudaTensor<float>> predicateBoxes;
+    // std::shared_ptr<CudaTensor<float>> predicateLogits;
+    // std::shared_ptr<CudaTensor<float>> predicateLogic;
 public:
     MaskDecoderSession(
         std::unique_ptr<Ort::Session> session,

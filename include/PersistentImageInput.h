@@ -11,7 +11,6 @@ class PersistentImageInput : public ImageProvider {
 private:
     cv::cuda::GpuMat resizedImage;
     cv::cuda::GpuMat gpuImage;
-    cv::Mat cpuBlob;
     cv::cuda::Stream stream;
     int x;
     int y;
