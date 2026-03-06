@@ -29,6 +29,7 @@ protected:
     }
 public:
     virtual void copyToBuffer(const std::vector<T>& sourceBuffer) = 0;
+    virtual std::vector<T> readBuffer() const = 0;
     T* getStartPtr() {
         return start;
     }

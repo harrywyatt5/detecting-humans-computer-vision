@@ -14,8 +14,6 @@ private:
     LanguageToken(std::vector<int64_t> dataVector);
 
     static int numOfTokens;
-    static int64_t endToken;
-    static int64_t missingToken;
 public:
     void populateTensorsWithToken(GenericTensor<int64_t>& textIds, GenericTensor<int64_t>& attentionMask) const;
 

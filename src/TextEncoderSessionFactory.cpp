@@ -16,7 +16,6 @@ std::unique_ptr<TextEncoderSession> TextEncoderSessionFactory::createSession(con
     // Outputs
     // Our inputs are only ever one because we only ever input one text prompt at a time
     auto textFeatures = CudaTensor<float>::createCudaTensor({1, 32, 256}, context);
-    auto textMask = CudaTensor<uint8_t>::createBoolCudaTensor({1, 32}, context);
 
     auto session = std::make_unique<Ort::Session>(context.getEnvironment(), context.getTextEncoderPath().c_str(), context.getSessionOptions());
     // As the session is allocated on the heap, it should be no problem that we are moving these pieces of data
@@ -25,14 +24,15 @@ std::unique_ptr<TextEncoderSession> TextEncoderSessionFactory::createSession(con
     textEncoderBindings.BindInput("input_ids", inputIds->getTensor());
     textEncoderBindings.BindInput("attention_mask", attentionMasks->getTensor());
     textEncoderBindings.BindOutput("text_features", textFeatures->getTensor());
-    textEncoderBindings.BindOutput("text_mask", textMask->getTensor());
+    // OnnxRuntime HATES the fact that this tensor is boolean, and won't write to it. Luckily, this output
+    // is the same as the attention_mask input, so we just use that instead...
+    textEncoderBindings.BindOutput("text_mask", context.getCudaMemoryInfo());
 
     return std::make_unique<TextEncoderSession>(
         std::move(session),
         std::move(textEncoderBindings),
         std::move(inputIds),
         std::move(attentionMasks),
-        std::move(textFeatures),
-        std::move(textMask)
+        std::move(textFeatures)
     );
 }

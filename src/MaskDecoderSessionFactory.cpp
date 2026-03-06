@@ -9,6 +9,7 @@
 #include <memory>
 #include <vector>
 #include <cstdint>
+#include <algorithm>
 
 std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(const Sam3Context& samContext, TextEncoderSession& textEncoder, VisionEncoderSession& visionEncoder) const {
     // Inputs
@@ -18,7 +19,9 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
     auto fpnPos2 = visionEncoder.getFpnPos2Tensor();
 
     auto textFeatures = textEncoder.getTextFeaturesTensor();
-    auto textMasks = textEncoder.getTextMaskTensor();
+
+    // Create text masks, which is just the same as our attention mask. But we have to do this at runtime
+    auto textMasks = CudaTensor<uint8_t>::createCudaTensorWithTypeOverride({1, 32}, samContext, ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL);
 
     // We don't want to pass bounding boxes to track, so we block out these values
     auto inputBoxes = CudaTensor<float>::createCudaTensor({1, 1, 4}, samContext);

@@ -17,25 +17,22 @@ private:
     Ort::IoBinding bindings{nullptr};
 
     std::unique_ptr<CPUTensor<int64_t>> inputIdsTensor;
-    std::unique_ptr<CPUTensor<int64_t>> attentionMaskTensor;
-    // We use a shared pointer for the textFeatures and textMasks because they are the inputs to the decoder...
+    // We use a shared pointer for textFeatures and attentionMasks because they are the input to the decoder...
+    std::shared_ptr<CPUTensor<int64_t>> attentionMaskTensor;
     std::shared_ptr<CudaTensor<float>> textFeaturesTensor;
-    std::shared_ptr<CudaTensor<uint8_t>> textMaskTensor;
 public:
     // You should generally use TextEncoderSessionFactory rather than calling this method yourself...
     TextEncoderSession(
         std::unique_ptr<Ort::Session> session,
         Ort::IoBinding bindings,
         std::unique_ptr<CPUTensor<int64_t>> inputIdsTensor,
-        std::unique_ptr<CPUTensor<int64_t>> attentionMaskTensor,
-        std::shared_ptr<CudaTensor<float>> textFeaturesTensor,
-        std::shared_ptr<CudaTensor<uint8_t>> textMaskTensor
+        std::shared_ptr<CPUTensor<int64_t>> attentionMaskTensor,
+        std::shared_ptr<CudaTensor<float>> textFeaturesTensor
     ) : session(std::move(session)),
         bindings(std::move(bindings)),
         inputIdsTensor(std::move(inputIdsTensor)),
         attentionMaskTensor(std::move(attentionMaskTensor)),
         textFeaturesTensor(std::move(textFeaturesTensor)),
-        textMaskTensor(std::move(textMaskTensor)),
         StartFlowSession<LanguageToken>() {}
 
     void initialiseSession(LanguageToken& token) override;
@@ -43,6 +40,6 @@ public:
     std::vector<Ort::Value> runWithResult() override;
 
     // Getters
+    std::shared_ptr<CPUTensor<int64_t>> getAttentionMaskTensor();
     std::shared_ptr<CudaTensor<float>> getTextFeaturesTensor();
-    std::shared_ptr<CudaTensor<uint8_t>> getTextMaskTensor();
 };
