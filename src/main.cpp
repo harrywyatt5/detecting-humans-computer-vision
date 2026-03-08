@@ -5,6 +5,7 @@
 #include "PersistentImageInputFactory.h"
 #include "VisionEncoderSessionFactory.h"
 #include "MaskDecoderSessionFactory.h"
+#include "CreateImageProcessor.h"
 #include <onnxruntime_c_api.h>
 #include <chrono>
 #include <iostream>
@@ -27,24 +28,19 @@ int main() {
                             .withNumBoxesLimit(1)
                             .build();
     std::shared_ptr<PersistentImageInput> imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
-    auto textEncoderSession = TextEncoderSessionFactory().createSession(sam3ModelContext);
-    auto visionEncoderSession = VisionEncoderSessionFactory().createSession(sam3ModelContext);
-    auto decoderSession = MaskDecoderSessionFactory().createSession(sam3ModelContext, *textEncoderSession, *visionEncoderSession);
-    auto persistentModel = PersistentSam3Model(
-        std::move(textEncoderSession),
-        std::move(visionEncoderSession),
-        std::move(decoderSession)
-    );
-    persistentModel.mountAndCalculatePrompt(languageToken);
+    std::shared_ptr<CreateImageProcessor> createImageProcessor = CreateImageProcessor::createCreateImageProcessor(1920, 1080, 288, 288, 200, 0.25, "masks.jpg", sam3ModelContext);
 
-    // Mount image
+    auto persistentModel = PersistentSam3Model::createSam3Model(sam3ModelContext);
+    persistentModel.registerOutputProcessor(createImageProcessor);
+    persistentModel.mountAndCalculatePrompt(languageToken);
     imageInput->uploadImageFromDisk("img.jpg");
     persistentModel.detect(imageInput);
 
     // Mount image
-    imageInput->uploadImageFromDisk("img2.jpg");
+    imageInput->uploadImageFromDisk("img.jpg");
     auto startTime = std::chrono::high_resolution_clock::now();
     persistentModel.detect(imageInput);
+    persistentModel.processOutput();
     auto endTime = std::chrono::high_resolution_clock::now();
     std::cout << "Taken " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() << std::endl;
 

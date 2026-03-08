@@ -29,7 +29,12 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
     auto inputBoxLabels = CPUTensor<int64_t>::createCPUTensor({1, 1}, samContext);
     inputBoxLabels->copyToBuffer(std::vector<int64_t>(1, -10));
 
-    // We don't preallocate outputs unfortunately as we can have a varied number of outputs
+    // Outputs
+    auto predMasks = CudaTensor<float>::createCudaTensor({1, 200, 288, 288}, samContext);
+    auto predBoxes = CPUTensor<float>::createCPUTensor({1, 200, 4}, samContext);
+    auto predLogits = CPUTensor<float>::createCPUTensor({1, 200}, samContext);
+    auto predLogic = CPUTensor<float>::createCPUTensor({1, 1}, samContext);
+
     auto session = std::make_unique<Ort::Session>(samContext.getEnvironment(), samContext.getDecoderPath().c_str(), samContext.getSessionOptions());
     Ort::IoBinding bindings{*session};
 
@@ -41,11 +46,10 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
     bindings.BindInput("text_mask", textMasks->getTensor());
     bindings.BindInput("input_boxes", inputBoxes->getTensor());
     bindings.BindInput("input_boxes_labels", inputBoxLabels->getTensor());
-    // TODO: change to GPU for image processing bit
-    bindings.BindOutput("pred_masks", samContext.getCpuMemoryInfo());
-    bindings.BindOutput("pred_boxes", samContext.getCpuMemoryInfo());
-    bindings.BindOutput("pred_logits", samContext.getCpuMemoryInfo());
-    bindings.BindOutput("presence_logits", samContext.getCpuMemoryInfo());
+    bindings.BindOutput("pred_masks", predMasks->getTensor());
+    bindings.BindOutput("pred_boxes", predBoxes->getTensor());
+    bindings.BindOutput("pred_logits", predLogits->getTensor());
+    bindings.BindOutput("presence_logits", predLogic->getTensor());
 
     return std::make_unique<MaskDecoderSession>(
         std::move(session),
@@ -57,6 +61,10 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
         std::move(textFeatures),
         std::move(textMasks),
         std::move(inputBoxes),
-        std::move(inputBoxLabels)
+        std::move(inputBoxLabels),
+        std::move(predMasks),
+        std::move(predBoxes),
+        std::move(predLogits),
+        std::move(predLogic)
     );
 }

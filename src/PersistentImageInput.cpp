@@ -48,3 +48,11 @@ void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
         throw std::runtime_error(std::string("Could not process image: ") + cudaGetErrorString(err));
     }
 }
+
+int PersistentImageInput::getOriginalX() const {
+    return x;
+}
+
+int PersistentImageInput::getOriginalY() const {
+    return y;
+}

@@ -24,4 +24,6 @@ public:
     // TODO: implement this!
     void uploadImageFromSensorMsg() {};
     void writeImageToCudaTensor(CudaTensor<float>& tensor) override;
+    int getOriginalX() const override;
+    int getOriginalY() const override;
 };

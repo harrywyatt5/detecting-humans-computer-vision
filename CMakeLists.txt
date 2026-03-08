@@ -30,6 +30,8 @@ set(SOURCES
 	src/TextEncoderInitialiser.cpp
 	src/VisionEncoderInitialiser.cpp
 	src/MaskDecoderInitialiser.cpp
+	src/CreateImageProcessor.cpp
+	src/CreateImageKernel.cu
 )
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")

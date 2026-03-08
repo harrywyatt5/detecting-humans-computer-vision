@@ -5,10 +5,14 @@
 #include "VisionEncoderSession.h"
 #include "PersistentImageInput.h"
 #include "MaskDecoderSession.h"
+#include "Sam3Context.h"
 #include "AbstractSession.h"
 #include "TextEncoderInitialiser.h"
 #include "MaskDecoderInitialiser.h"
 #include "VisionEncoderInitialiser.h"
+#include "TextEncoderSessionFactory.h"
+#include "VisionEncoderSessionFactory.h"
+#include "MaskDecoderSessionFactory.h"
 #include <memory>
 #include <stdexcept>
 #include <opencv2/opencv.hpp>
@@ -37,78 +41,45 @@ void PersistentSam3Model::detect(std::shared_ptr<ImageProvider> imageProvider) {
     // Load decoder and find masks
     auto returnTensors = decoder->runWithResult();
 
-    // DEBUG: Optimized Best-Mask Extraction with Shape Verification
-    try {
-        int masksIdx = -1;
-        int logitsIdx = -1;
+    // ...
+    hasGeneratedOutput = true;
+}
 
-        // 1. Dynamically find the correct indices based on tensor shapes
-        for (size_t i = 0; i < returnTensors.size(); ++i) {
-            auto shapeInfo = returnTensors[i].GetTensorTypeAndShapeInfo();
-            auto shape = shapeInfo.GetShape(); // Returns std::vector<int64_t>
-            
-            // Check for pred_masks: float32[batch, 200, 288, 288]
-            if (shape.size() == 4 && shape[2] == 288 && shape[3] == 288) {
-                masksIdx = i;
-            } 
-            // Check for pred_logits: float32[batch, 200]
-            else if (shape.size() == 2 && shape[1] == 200) {
-                logitsIdx = i;
-            }
-        }
+void PersistentSam3Model::registerOutputProcessor(std::shared_ptr<OutputProcessor> outputProcessor) {
+  outputProcessors.push_back(outputProcessor);
+}
 
-        // 2. Verify we actually found the required tensors
-        if (masksIdx == -1 || logitsIdx == -1) {
-            throw std::runtime_error("Validation Failed: Could not find tensors matching the expected shapes for masks or logits.");
-        }
+void PersistentSam3Model::processOutput() {
+  throwIfNoOutput();
 
-        // 3. Extract shape and data using the verified indices
-        auto shapeInfo = returnTensors[masksIdx].GetTensorTypeAndShapeInfo();
-        auto shape = shapeInfo.GetShape();
-        
-        const int numMasks = shape[1]; 
-        const int maskH = shape[2];
-        const int maskW = shape[3];
+  if (outputProcessors.size() == 0) {
+    throw std::runtime_error("No OutputProcessors were attached to this instance...");
+  }
 
-        const float* masksData = returnTensors[masksIdx].GetTensorData<float>();
-        const float* logitsData = returnTensors[logitsIdx].GetTensorData<float>();
-
-        // 4. Find the index of the best mask
-        int bestIdx = 0;
-        float maxLogit = logitsData[0];
-        for (int i = 1; i < numMasks; ++i) {
-            if (logitsData[i] > maxLogit) {
-                maxLogit = logitsData[i];
-                bestIdx = i;
-            }
-        }
-
-        std::cout << "[DEBUG] Total Masks: " << numMasks << " | Best Mask Index: " << bestIdx << " | Confidence Logit: " << maxLogit << std::endl;
-
-        // 5. Wrap the raw float data of ONLY the best mask into a cv::Mat
-        // Note: const_cast is safe here because we only read from it
-        float* bestMaskPtr = const_cast<float*>(masksData + (bestIdx * maskH * maskW));
-        cv::Mat maskMat(maskH, maskW, CV_32F, bestMaskPtr);
-
-        // 6. Threshold using OpenCV's fast operator (Mask values > 0 are foreground)
-        cv::Mat binaryMaskSmall = maskMat > 0.0f;
-
-        // 7. Resize back to 1920x1080
-        cv::Mat finalImage;
-        cv::resize(binaryMaskSmall, finalImage, cv::Size(1920, 1080), 0, 0, cv::INTER_NEAREST);
-
-        // 8. Save to disk
-        cv::imwrite("mask.jpg", finalImage);
-        std::cout << "[DEBUG] Saved mask.jpg successfully." << std::endl;
-
-    } catch (const std::exception& e) {
-        std::cerr << "[DEBUG ERROR] Failed to process mask: " << e.what() << std::endl;
-    }
-    // END DEBUG
+  for (auto& op : outputProcessors) {
+    op->processOutput(*decoder->getPredicateMasks(), *decoder->getPredicateBoxes(), *decoder->getPredicateLogits(), *decoder->getPredicateLogic());
+  }
 }
 
 void PersistentSam3Model::throwIfNoTextEncodings() const {
   if (!hasGeneratedTextEncodings) {
     throw std::runtime_error("Cannot use this function when text encodings have not been generated!");
   }
+}
+
+void PersistentSam3Model::throwIfNoOutput() const {
+  if (!hasGeneratedOutput) {
+    throw std::runtime_error("Run detect before processing the output!");
+  }
+}
+
+PersistentSam3Model PersistentSam3Model::createSam3Model(const Sam3Context& context) {
+  auto textEncoderSession = TextEncoderSessionFactory().createSession(context);
+  auto visionEncoderSession = VisionEncoderSessionFactory().createSession(context);
+  auto decoderSession = MaskDecoderSessionFactory().createSession(context, *textEncoderSession, *visionEncoderSession);
+  return PersistentSam3Model(
+    std::move(textEncoderSession),
+    std::move(visionEncoderSession),
+    std::move(decoderSession)
+  );
 }

@@ -2,7 +2,6 @@
 
 #include "GenericTensor.h"
 #include "Sam3Context.h"
-
 #include <onnxruntime_c_api.h>
 #include <onnxruntime_cxx_api.h>
 #include <cuda_runtime.h>

@@ -33,6 +33,9 @@ public:
     T* getStartPtr() {
         return start;
     }
+    const T* getConstStartPtr() const {
+        return start;
+    }
     size_t getSize() const {
         return size;
     }
