@@ -9,6 +9,7 @@
 
 void MaskDecoderSession::run() {
     throwIfNotInitialised();
+    bindings.SynchronizeInputs();
     session->Run(Ort::RunOptions{nullptr}, bindings);
 }
 

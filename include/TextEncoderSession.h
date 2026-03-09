@@ -4,7 +4,7 @@
 #include "CudaTensor.h"
 #include "LanguageToken.h"
 #include "UninitialisedSession.h"
-
+#include "BindingBlueprint.h"
 #include <onnxruntime_cxx_api.h>
 #include <vector>
 #include <cstdint>
@@ -14,7 +14,7 @@ class TextEncoderSession : public UninitialisedSession {
 private:
     // Actual ORT details
     std::unique_ptr<Ort::Session> session;
-    Ort::IoBinding bindings{nullptr};
+    BindingBlueprint bindingBlueprint;
 
     std::shared_ptr<CPUTensor<int64_t>> inputIdsTensor;
     std::shared_ptr<CPUTensor<int64_t>> attentionMaskTensor;
@@ -23,12 +23,12 @@ public:
     // You should generally use TextEncoderSessionFactory rather than calling this method yourself...
     TextEncoderSession(
         std::unique_ptr<Ort::Session> session,
-        Ort::IoBinding bindings,
+        BindingBlueprint blueprint,
         std::shared_ptr<CPUTensor<int64_t>> inputIdsTensor,
         std::shared_ptr<CPUTensor<int64_t>> attentionMaskTensor,
         std::shared_ptr<CudaTensor<float>> textFeaturesTensor
     ) : session(std::move(session)),
-        bindings(std::move(bindings)),
+        bindingBlueprint(std::move(blueprint)),
         inputIdsTensor(std::move(inputIdsTensor)),
         attentionMaskTensor(std::move(attentionMaskTensor)),
         textFeaturesTensor(std::move(textFeaturesTensor)),

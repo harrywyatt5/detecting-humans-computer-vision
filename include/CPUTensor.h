@@ -63,7 +63,7 @@ public:
 
         T* ptr = createCPUMemory(numValues);
 
-        auto tensor = Ort::Value::CreateTensor(samContext.getCpuMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size(), dataType);
+        auto tensor = Ort::Value::CreateTensor(samContext.getCpuMemoryInfo(), (void*)ptr, numValues * sizeof(T), tensorSize.data(), tensorSize.size(), dataType);
         return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));
     }
 

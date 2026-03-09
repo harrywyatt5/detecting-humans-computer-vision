@@ -144,7 +144,7 @@ public:
         T* ptr = createGpuMemory(numValues);
 
         // TODO: if CreateTensor throws, make sure to free cudaMalloc
-        auto tensor = Ort::Value::CreateTensor(samContext.getCudaMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size(), type);
+        auto tensor = Ort::Value::CreateTensor(samContext.getCudaMemoryInfo(), (void*)ptr, numValues * sizeof(T), tensorSize.data(), tensorSize.size(), type);
         return std::unique_ptr<CudaTensor<T>>(new CudaTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor), samContext.getDeviceId()));
     }
 };

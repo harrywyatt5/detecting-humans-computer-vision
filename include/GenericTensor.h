@@ -1,11 +1,12 @@
 #pragma once
 
+#include "BlankGenericTensor.h"
 #include <vector>
 #include <cstdint>
 #include <onnxruntime_cxx_api.h>
 
 template <typename T>
-class GenericTensor {
+class GenericTensor : public BlankGenericTensor {
 protected:
     T* start;
     // Inteface note: size should hold the number of elements allocated
@@ -16,7 +17,7 @@ protected:
     Ort::Value tensor{nullptr};
 
     GenericTensor(T* ptr, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor) 
-            : start(ptr), size(size), tensorShape(std::move(tensorShape)), tensor(std::move(tensor)) {}
+            : start(ptr), size(size), BlankGenericTensor(std::move(tensorShape), std::move(tensor)) {}
     virtual void releaseMemory() = 0;
 
     static size_t getTensorCountFromShape(const std::vector<int64_t>& shape) {
@@ -36,17 +37,11 @@ public:
     const T* getConstStartPtr() const {
         return start;
     }
-    size_t getSize() const {
+    size_t getSize() const override {
         return size;
     }
-    size_t getSizeInBytes() const {
+    size_t getSizeInBytes() const override {
         return size * sizeof(T);
-    }
-    const std::vector<int64_t>& getTensorShape() const {
-        return tensorShape;
-    }
-    const Ort::Value& getTensor() const {
-        return tensor;
     }
 
     // Delete copies

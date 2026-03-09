@@ -24,6 +24,21 @@ void PersistentSam3Model::mountAndCalculatePrompt(std::shared_ptr<LanguageToken>
     MaskDecoderInitialiser maskInit(token);
     maskInit.initialiseSession(*decoder);
 
+    // After populateTextIdsTensor, before running the session
+    auto inputIdsTensor = textEncoderSession->getInputIdsTensor();
+
+    // Get the raw pointer from the Ort::Value itself
+    auto* ortPtr = inputIdsTensor->getTensor().GetTensorData<int64_t>();
+    auto* ourPtr = inputIdsTensor->getStartPtr();
+
+    std::cout << "Same pointer: " << (ortPtr == ourPtr ? "YES" : "NO") << std::endl;
+    std::cout << "Ort ptr address: " << (void*)ortPtr << std::endl;
+    std::cout << "Our ptr address: " << (void*)ourPtr << std::endl;
+
+    // Print first few values from both
+    std::cout << "Via our ptr: " << ourPtr[0] << " " << ourPtr[1] << " " << ourPtr[2] << std::endl;
+    std::cout << "Via ort ptr: " << ortPtr[0] << " " << ortPtr[1] << " " << ortPtr[2] << std::endl;
+
     std::vector<int64_t> inputIdValues(32);
     std::vector<int64_t> attentionMaskValues(32);
 

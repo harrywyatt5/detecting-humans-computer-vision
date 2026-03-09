@@ -11,12 +11,13 @@
 
 void TextEncoderSession::run() {
     throwIfNotInitialised();
+    auto bindings = bindingBlueprint.createIoBindingObject(*session);
     this->session->Run(Ort::RunOptions{nullptr}, bindings);
 }
 
 std::vector<Ort::Value> TextEncoderSession::runWithResult() {
     run();
-    return bindings.GetOutputValues();
+    return {};
 }
 
 std::shared_ptr<CudaTensor<float>> TextEncoderSession::getTextFeaturesTensor() {

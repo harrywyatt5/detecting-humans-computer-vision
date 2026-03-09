@@ -123,7 +123,7 @@ Sam3Context Sam3ContextBuilder::build() const {
             tensorRTOptionsNames.size()
         )
     );
-    //sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
+    sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
     sessionOptions.AppendExecutionProvider_CUDA(cudaOptions);
     api.ReleaseTensorRTProviderOptions(tensorOptions);
 
@@ -148,6 +148,6 @@ Sam3Context Sam3ContextBuilder::build() const {
         std::move(visionEncoderPath),
         std::move(decoderPath),
         Ort::MemoryInfo("Cuda", OrtDeviceAllocator, deviceId, OrtMemTypeDefault),
-        Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault)
+        Ort::MemoryInfo("Cpu", OrtDeviceAllocator, 0, OrtMemTypeCPUInput)
     );
 }

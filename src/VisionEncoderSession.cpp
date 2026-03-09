@@ -9,7 +9,7 @@
 void VisionEncoderSession::run() {
     throwIfNotInitialised();
     isInitialised = false;
-
+    bindings.SynchronizeInputs();
     session->Run(Ort::RunOptions{nullptr}, bindings);
 }
 
