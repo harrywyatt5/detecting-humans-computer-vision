@@ -15,6 +15,7 @@
 #include "MaskDecoderSessionFactory.h"
 #include <memory>
 #include <stdexcept>
+#include <cuda_runtime.h>
 #include <opencv2/opencv.hpp>
 
 void PersistentSam3Model::mountAndCalculatePrompt(std::shared_ptr<LanguageToken> token) {
@@ -23,10 +24,34 @@ void PersistentSam3Model::mountAndCalculatePrompt(std::shared_ptr<LanguageToken>
     MaskDecoderInitialiser maskInit(token);
     maskInit.initialiseSession(*decoder);
 
+    std::vector<int64_t> inputIdValues(32);
+    std::vector<int64_t> attentionMaskValues(32);
+
+    memcpy(inputIdValues.data(), textEncoderSession->getInputIdsTensor()->getConstStartPtr(), 32 * sizeof(int64_t));
+    memcpy(attentionMaskValues.data(), textEncoderSession->getAttentionMaskTensor()->getConstStartPtr(), 32 * sizeof(int64_t));
+
+    std::cout << "input_ids: ";
+    for (int i = 0; i < 32; ++i) std::cout << inputIdValues[i] << " ";
+    std::cout << std::endl;
+
+    std::cout << "attention_mask: ";
+    for (int i = 0; i < 32; ++i) std::cout << attentionMaskValues[i] << " ";
+    std::cout << std::endl;
+
     // Once the token is actually in the buffer (above), we can run the session.
     // This will populate the tensors in the TextEncoderSession so when they're
     // referenced downstream they will have the correct values
     textEncoderSession->run();
+    std::vector<float> textFeatValues(10);
+    cudaMemcpy(
+        textFeatValues.data(),
+        textEncoderSession->getTextFeaturesTensor()->getConstStartPtr(),
+        10 * sizeof(float),
+        cudaMemcpyDeviceToHost
+    );
+    for (int i = 0; i < 10; ++i) {
+        std::cout << "text_feat[" << i << "] = " << textFeatValues[i] << std::endl;
+    }
     hasGeneratedTextEncodings = true;
 }
 

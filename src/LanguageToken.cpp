@@ -10,6 +10,7 @@
 #include <iostream>
 
 int LanguageToken::numOfTokens = 32;
+int64_t LanguageToken::terminatingToken = 49407;
 
 LanguageToken::LanguageToken(std::vector<int64_t> dataVector, std::vector<uint8_t> attentionMaskInput) 
     : data(std::move(dataVector)), attentionMask(std::move(attentionMaskInput)) 
@@ -90,12 +91,23 @@ std::unique_ptr<LanguageToken> LanguageToken::createFromFile(const std::string& 
     fileBuffer.read(reinterpret_cast<char*>(arr.data()), bytesToRead);
     fileBuffer.close();
 
-    // Read through the array buffer and check which values in the attention mask we have to flip
+    // If we are padding with 0, make sure we are actually using 49407 instead
+    bool foundEndToken = false;
     for (auto i = 0; i < LanguageToken::numOfTokens; ++i) {
-        if (arr[i] != 0) {
+        if (foundEndToken) {
+            arr[i] = LanguageToken::terminatingToken;
+            attentionMaskBuff[i] = 0;
+            std::cout << "49407; ";
+        } else {
             attentionMaskBuff[i] = 1;
+            std::cout << arr[i] << "; ";
+            if (arr[i] == LanguageToken::terminatingToken) {
+                foundEndToken = true;
+            }
         }
     }
+
+    std::cout << std::endl;
 
     return std::unique_ptr<LanguageToken>(new LanguageToken(std::move(arr), std::move(attentionMaskBuff)));
 }

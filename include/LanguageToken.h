@@ -16,6 +16,7 @@ private:
     LanguageToken(std::vector<int64_t> dataVector, std::vector<uint8_t> attentionMask);
 
     static int numOfTokens;
+    static int64_t terminatingToken;
 public:
     void populateAttentionMaskTensor(GenericTensor<int64_t>& attentionMaskTensor) const;
     void populateAttentionMaskTensor(GenericTensor<uint8_t>& attentionMaskTensor) const;

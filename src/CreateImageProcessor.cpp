@@ -17,10 +17,10 @@ CreateImageProcessor::CreateImageProcessor(
     int iX,
     int iY,
     int masks,
-    float threshold,
+    float thres,
     const std::string& outPath,
     int devId
-) : finalX(x), finalY(y), masksCount(masks), outputPath(outPath), deviceId(devId) {
+) : finalX(x), finalY(y), masksCount(masks), outputPath(outPath), deviceId(devId), threshold(thres) {
     cpuImage = std::make_shared<cv::Mat>(x, y, CV_8UC3);
     cv::cuda::setDevice(devId);
     outputImage = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC3);
@@ -63,10 +63,14 @@ void CreateImageProcessor::processOutput(
 
     const float* logitsPtr = outputLogitsTensor.getConstStartPtr();
 
+    float presenceScore = 1.0f / (1.0f + std::exp(-outputLogicTensor.getConstStartPtr()[0]));
+
     for (auto i = 0; i < masksCount; ++i) {
-        masksInclusionCpu[i] = logitsPtr[i] > threshold ? 1 : 0;
+        float score = (1.0f / (1.0f + std::exp(-logitsPtr[i]))) * presenceScore;
+        std::cout << "Mask score: " << score << "\n";
+        masksInclusionCpu[i] = score >= threshold ? 1 : 0;
     }
-    
+
     // Copy our inclusion array onto the gpu
     auto error = cudaMemcpy(
         (void*)maskInclusionPtr,
@@ -120,7 +124,7 @@ std::unique_ptr<CreateImageProcessor> CreateImageProcessor::createCreateImagePro
     int intermediateX,
     int intermediateY,
     int masks,
-    float threshold,
+    float thres,
     const std::string& savePath,
     const Sam3Context& context
 ) {
@@ -130,7 +134,7 @@ std::unique_ptr<CreateImageProcessor> CreateImageProcessor::createCreateImagePro
         intermediateX,
         intermediateY,
         masks,
-        threshold,
+        thres,
         savePath,
         context.getDeviceId()
     );

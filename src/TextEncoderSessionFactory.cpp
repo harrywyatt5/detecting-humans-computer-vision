@@ -26,7 +26,7 @@ std::unique_ptr<TextEncoderSession> TextEncoderSessionFactory::createSession(con
     textEncoderBindings.BindOutput("text_features", textFeatures->getTensor());
     // OnnxRuntime HATES the fact that this tensor is boolean, and won't write to it. Luckily, this output
     // is the same as the attention_mask input, so we just use that instead...
-    textEncoderBindings.BindOutput("text_mask", context.getCudaMemoryInfo());
+    //textEncoderBindings.BindOutput("text_mask", context.getCpuMemoryInfo());
 
     return std::make_unique<TextEncoderSession>(
         std::move(session),

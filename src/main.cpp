@@ -28,16 +28,16 @@ int main() {
                             .withNumBoxesLimit(1)
                             .build();
     std::shared_ptr<PersistentImageInput> imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
-    std::shared_ptr<CreateImageProcessor> createImageProcessor = CreateImageProcessor::createCreateImageProcessor(1920, 1080, 288, 288, 200, 0.25, "masks.jpg", sam3ModelContext);
+    std::shared_ptr<CreateImageProcessor> createImageProcessor = CreateImageProcessor::createCreateImageProcessor(1920, 1080, 288, 288, 200, 0.1f, "masks.jpg", sam3ModelContext);
 
     auto persistentModel = PersistentSam3Model::createSam3Model(sam3ModelContext);
     persistentModel.registerOutputProcessor(createImageProcessor);
     persistentModel.mountAndCalculatePrompt(languageToken);
-    imageInput->uploadImageFromDisk("img.jpg");
-    persistentModel.detect(imageInput);
+    // imageInput->uploadImageFromDisk("img2.jpg");
+    // persistentModel.detect(imageInput);
 
     // Mount image
-    imageInput->uploadImageFromDisk("img.jpg");
+    imageInput->uploadImageFromDisk("img2.jpg");
     auto startTime = std::chrono::high_resolution_clock::now();
     persistentModel.detect(imageInput);
     persistentModel.processOutput();

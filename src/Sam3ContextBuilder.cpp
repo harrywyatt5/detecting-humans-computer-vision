@@ -123,7 +123,7 @@ Sam3Context Sam3ContextBuilder::build() const {
             tensorRTOptionsNames.size()
         )
     );
-    sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
+    //sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
     sessionOptions.AppendExecutionProvider_CUDA(cudaOptions);
     api.ReleaseTensorRTProviderOptions(tensorOptions);
 
