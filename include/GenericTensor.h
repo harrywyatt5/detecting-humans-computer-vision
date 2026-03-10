@@ -22,7 +22,7 @@ protected:
 
     static size_t getTensorCountFromShape(const std::vector<int64_t>& shape) {
         size_t count = 1;
-        for (auto i = 0; i < shape.size(); ++i) {
+        for (size_t i = 0; i < shape.size(); ++i) {
             count *= shape[i];
         }
 

@@ -56,9 +56,9 @@ __global__ void createImage(
     }
 
     uchar3 mixColour = make_uchar3(
-        (unsigned char)(maskValue * 211),
+        (unsigned char)(maskValue * 137),
         (unsigned char)(maskValue * 83),
-        (unsigned char)(maskValue * 137)
+        (unsigned char)(maskValue * 211)
     );
     uchar3 currentPixelColour = image(y, x);
     // >> 8 is same as dividing through by 256, but faster

@@ -47,7 +47,7 @@ public:
     std::vector<T> readBuffer() const override {
         std::vector<T> tempBuffer(this->size, 0);
 
-        for (auto i = 0; i < this->size; ++i) {
+        for (size_t i = 0; i < this->size; ++i) {
             tempBuffer[i] = this->start[i];
         }
 

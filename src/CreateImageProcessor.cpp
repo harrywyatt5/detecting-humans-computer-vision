@@ -20,7 +20,7 @@ CreateImageProcessor::CreateImageProcessor(
     int masks,
     float thres,
     int devId
-) : finalX(x), finalY(y), masksCount(masks), deviceId(devId), threshold(thres) {
+) : finalX(x), finalY(y), masksCount(masks), threshold(thres), deviceId(devId) {
     cv::cuda::setDevice(devId);
     outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
     intermediateMask = cv::cuda::GpuMat(cv::Size(iX, iY), CV_8UC1);
@@ -56,7 +56,7 @@ void CreateImageProcessor::processOutput(
     const CPUTensor<float>& outputLogicTensor
 ) {
     // Sanity check
-    if (outputLogitsTensor.getSize() != masksCount) {
+    if (outputLogitsTensor.getSize() != (size_t)masksCount) {
         throw std::runtime_error("Mismatch between CreateImageProcessor config and numbers of logits in tensor");
     }
 

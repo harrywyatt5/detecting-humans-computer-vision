@@ -15,17 +15,17 @@ int64_t LanguageToken::terminatingToken = 49407;
 LanguageToken::LanguageToken(std::vector<int64_t> dataVector, std::vector<uint8_t> attentionMaskInput) 
     : data(std::move(dataVector)), attentionMask(std::move(attentionMaskInput)) 
 {
-    if (data.size() != LanguageToken::numOfTokens) {
+    if (data.size() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error("LanguageToken should contain exactly " + std::to_string(LanguageToken::numOfTokens) + " numbers!");
     }
 
-    if (attentionMask.size() != LanguageToken::numOfTokens) {
+    if (attentionMask.size() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error("AttentionMask should contain exactly " + std::to_string(LanguageToken::numOfTokens) + " numbers!");
     }
 }
 
 void LanguageToken::populateAttentionMaskTensor(GenericTensor<uint8_t>& attentionMaskTensor) const {
-    if (attentionMaskTensor.getSize() != LanguageToken::numOfTokens) {
+    if (attentionMaskTensor.getSize() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error(
             "Incompatible attention_mask tensor provided. Tensor expected " 
             + std::to_string(attentionMaskTensor.getSize()) 
@@ -38,7 +38,7 @@ void LanguageToken::populateAttentionMaskTensor(GenericTensor<uint8_t>& attentio
 }
 
 void LanguageToken::populateAttentionMaskTensor(GenericTensor<int64_t>& attentionMaskTensor) const {
-    if (attentionMaskTensor.getSize() != LanguageToken::numOfTokens) {
+    if (attentionMaskTensor.getSize() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error(
             "Incompatible attention_mask tensor provided. Tensor expected " 
             + std::to_string(attentionMaskTensor.getSize()) 
@@ -56,7 +56,7 @@ void LanguageToken::populateAttentionMaskTensor(GenericTensor<int64_t>& attentio
 }
 
 void LanguageToken::populateTextIdsTensor(GenericTensor<int64_t>& textIdsTensor) const {
-    if (textIdsTensor.getSize() != LanguageToken::numOfTokens) {
+    if (textIdsTensor.getSize() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error(
             "Incompatible text_ids tensor provided. Tensor expected " 
             + std::to_string(textIdsTensor.getSize()) 
@@ -83,7 +83,7 @@ std::unique_ptr<LanguageToken> LanguageToken::createFromFile(const std::string& 
     fileBuffer.seekg(0, std::ios::end);
     auto byteCount = fileBuffer.tellg();
 
-    if (byteCount != bytesToRead) {
+    if ((long long)byteCount != (long long)bytesToRead) {
         throw std::runtime_error("File does not have exactly " + std::to_string(LanguageToken::numOfTokens) + " tokens!");
     }
 

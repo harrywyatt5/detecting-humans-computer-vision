@@ -111,7 +111,7 @@ Sam3Context Sam3ContextBuilder::build() const {
     // We have to create an array of the values to feed to the provider options
     // std::string doesn't do! We need const char*
     std::vector<const char*> tensorValueArray;
-    for (auto i = 0; i < tensorRTOptions.size(); ++i) {
+    for (size_t i = 0; i < tensorRTOptions.size(); ++i) {
         tensorValueArray.push_back(tensorRTOptions[i].c_str());
     }
 

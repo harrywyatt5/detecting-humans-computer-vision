@@ -10,6 +10,10 @@ if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL "")
 	set(CMAKE_CUDA_ARCHITECTURES native)
 endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wno-reorder)
+endif()
+
 
 # Collect cpp files and target them for compilation, then add our headers
 set(SOURCES

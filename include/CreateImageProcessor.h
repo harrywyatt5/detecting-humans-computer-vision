@@ -10,28 +10,28 @@
 
 class CreateImageProcessor : public OutputProcessor {
 private:
+    int finalX;
+    int finalY;
+    int masksCount;
+    float threshold;
     int deviceId;
     cv::cuda::GpuMat intermediateMask;
     cv::cuda::GpuMat outputMask;
     std::vector<uint8_t> masksInclusionCpu;
     uint8_t* maskInclusionPtr;
-    int masksCount;
-    int finalX;
-    int finalY;
-    float threshold;
     cv::cuda::Stream stream;
 
     void allocateMemory();
     void syncAndCheckCuda();
 public:
     CreateImageProcessor(
-        int finalX,
-        int finalY,
+        int x,
+        int y,
         int intermediateX,
         int intermediateY,
         int masks,
-        float threshold,
-        int deviceId
+        float thres,
+        int devId
     );
     void processOutput(
         const CudaTensor<float>& outputMasksTensor,
