@@ -3,7 +3,7 @@
 #include "Binding.h"
 #include <onnxruntime_cxx_api.h>
 
-void BindingBlueprint::AddBinding(Binding binding) {
+void BindingBlueprint::addBinding(Binding binding) {
     bindings.push_back(binding);
 }
 

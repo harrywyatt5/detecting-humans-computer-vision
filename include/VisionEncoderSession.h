@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CudaTensor.h"
+#include "BindingBlueprint.h"
 #include "UninitialisedSession.h"
 #include "PersistentImageInput.h"
 #include <memory>
@@ -10,7 +11,7 @@
 class VisionEncoderSession : public UninitialisedSession {
 private:
     std::unique_ptr<Ort::Session> session;
-    Ort::IoBinding bindings{nullptr};
+    BindingBlueprint bindings;
 
     // Input
     std::shared_ptr<CudaTensor<float>> image;
@@ -22,7 +23,7 @@ private:
 public:
     VisionEncoderSession(
         std::unique_ptr<Ort::Session> session,
-        Ort::IoBinding bindings,
+        BindingBlueprint bindings,
         std::shared_ptr<CudaTensor<float>> image,
         std::shared_ptr<CudaTensor<float>> fpnFeat0,
         std::shared_ptr<CudaTensor<float>> fpnFeat1,
@@ -38,7 +39,6 @@ public:
         UninitialisedSession() {}
 
     void run() override;
-    std::vector<Ort::Value> runWithResult() override;
 
     // Getters
     std::shared_ptr<CudaTensor<float>> getImageTensor();

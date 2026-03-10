@@ -1,6 +1,7 @@
 #pragma once
 
 #include "UninitialisedSession.h"
+#include "BindingBlueprint.h"
 #include "CudaTensor.h"
 #include "CPUTensor.h"
 #include <memory>
@@ -11,7 +12,7 @@
 class MaskDecoderSession : public UninitialisedSession {
 private:
     std::unique_ptr<Ort::Session> session;
-    Ort::IoBinding bindings;
+    BindingBlueprint bindings;
 
     // Inputs
     std::shared_ptr<CudaTensor<float>> fpnFeat0;
@@ -20,9 +21,9 @@ private:
     std::shared_ptr<CudaTensor<float>> fpnPos2;
     std::shared_ptr<CudaTensor<float>> textFeatures;
     std::shared_ptr<CudaTensor<uint8_t>> textMasks;
-    std::unique_ptr<CudaTensor<float>> inputBoxes;
+    std::shared_ptr<CudaTensor<float>> inputBoxes;
     // int64_t have to be on the CPU unfortunately...
-    std::unique_ptr<CPUTensor<int64_t>> inputBoxesLabels;
+    std::shared_ptr<CPUTensor<int64_t>> inputBoxesLabels;
 
     // Outputs
     std::shared_ptr<CudaTensor<float>> predicateMasks;
@@ -32,21 +33,21 @@ private:
 public:
     MaskDecoderSession(
         std::unique_ptr<Ort::Session> session,
-        Ort::IoBinding bindings,
+        BindingBlueprint bindingBlueprint,
         std::shared_ptr<CudaTensor<float>> fpnFeat0,
         std::shared_ptr<CudaTensor<float>> fpnFeat1,
         std::shared_ptr<CudaTensor<float>> fpnFeat2,
         std::shared_ptr<CudaTensor<float>> fpnPos2,
         std::shared_ptr<CudaTensor<float>> textFeatures,
         std::shared_ptr<CudaTensor<uint8_t>> textMasks,
-        std::unique_ptr<CudaTensor<float>> inputBoxes,
-        std::unique_ptr<CPUTensor<int64_t>> inputBoxesLabels,
+        std::shared_ptr<CudaTensor<float>> inputBoxes,
+        std::shared_ptr<CPUTensor<int64_t>> inputBoxesLabels,
         std::shared_ptr<CudaTensor<float>> pMasks,
         std::shared_ptr<CPUTensor<float>> pBoxes,
         std::shared_ptr<CPUTensor<float>> pLogits,
         std::shared_ptr<CPUTensor<float>> pLogic
     ) : session(std::move(session)),
-        bindings(std::move(bindings)),
+        bindings(std::move(bindingBlueprint)),
         fpnFeat0(std::move(fpnFeat0)),
         fpnFeat1(std::move(fpnFeat1)),
         fpnFeat2(std::move(fpnFeat2)),
@@ -62,7 +63,6 @@ public:
         UninitialisedSession() {}
 
     void run() override;
-    std::vector<Ort::Value> runWithResult() override;
 
     // Getters
     std::shared_ptr<CudaTensor<uint8_t>> getTextMasksTensor();

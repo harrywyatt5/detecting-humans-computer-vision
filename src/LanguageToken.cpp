@@ -97,10 +97,8 @@ std::unique_ptr<LanguageToken> LanguageToken::createFromFile(const std::string& 
         if (foundEndToken) {
             arr[i] = LanguageToken::terminatingToken;
             attentionMaskBuff[i] = 0;
-            std::cout << "49407; ";
         } else {
             attentionMaskBuff[i] = 1;
-            std::cout << arr[i] << "; ";
             if (arr[i] == LanguageToken::terminatingToken) {
                 foundEndToken = true;
             }

@@ -63,8 +63,13 @@ public:
 
         T* ptr = createCPUMemory(numValues);
 
-        auto tensor = Ort::Value::CreateTensor(samContext.getCpuMemoryInfo(), (void*)ptr, numValues * sizeof(T), tensorSize.data(), tensorSize.size(), dataType);
-        return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));
+        try {
+            auto tensor = Ort::Value::CreateTensor(samContext.getCpuMemoryInfo(), (void*)ptr, numValues * sizeof(T), tensorSize.data(), tensorSize.size(), dataType);
+            return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));
+        } catch (const std::exception& exception) {
+            delete[] ptr;
+            throw;
+        }
     }
 
     static std::unique_ptr<CPUTensor<T>> createCPUTensor(std::vector<int64_t> tensorSize, const Sam3Context& samContext) {
@@ -72,7 +77,12 @@ public:
 
         T* ptr = createCPUMemory(numValues);
 
-        auto tensor = Ort::Value::CreateTensor<T>(samContext.getCpuMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
-        return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));
+        try {
+            auto tensor = Ort::Value::CreateTensor<T>(samContext.getCpuMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
+            return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));
+        } catch (const std::exception& exception) {
+            delete[] ptr;
+            throw;
+        }
     }
 };

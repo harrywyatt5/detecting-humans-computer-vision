@@ -1,6 +1,8 @@
 #include "MaskDecoderSessionFactory.h"
 
 #include "MaskDecoderSession.h"
+#include "BindingBlueprint.h"
+#include "Binding.h"
 #include "CudaTensor.h"
 #include "Sam3Context.h"
 #include "TextEncoderSession.h"
@@ -21,35 +23,37 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
     auto textFeatures = textEncoder.getTextFeaturesTensor();
 
     // Create text masks, which is just the same as our attention mask. But we have to do this at runtime
-    auto textMasks = CudaTensor<uint8_t>::createCudaTensorWithTypeOverride({1, 32}, samContext, ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL);
+    std::shared_ptr<CudaTensor<uint8_t>> textMasks = CudaTensor<uint8_t>::createCudaTensorWithTypeOverride({1, 32}, samContext, ONNXTensorElementDataType::ONNX_TENSOR_ELEMENT_DATA_TYPE_BOOL);
 
     // We don't want to pass bounding boxes to track, so we block out these values
-    auto inputBoxes = CudaTensor<float>::createCudaTensor({1, 1, 4}, samContext);
+    std::shared_ptr<CudaTensor<float>> inputBoxes = CudaTensor<float>::createCudaTensor({1, 1, 4}, samContext);
     inputBoxes->copyToBuffer(std::vector<float>(4, 0.0f));
-    auto inputBoxLabels = CPUTensor<int64_t>::createCPUTensor({1, 1}, samContext);
+    std::shared_ptr<CPUTensor<int64_t>> inputBoxLabels = CPUTensor<int64_t>::createCPUTensor({1, 1}, samContext);
     inputBoxLabels->copyToBuffer(std::vector<int64_t>(1, -10));
 
     // Outputs
-    auto predMasks = CudaTensor<float>::createCudaTensor({1, 200, 288, 288}, samContext);
-    auto predBoxes = CPUTensor<float>::createCPUTensor({1, 200, 4}, samContext);
-    auto predLogits = CPUTensor<float>::createCPUTensor({1, 200}, samContext);
-    auto predLogic = CPUTensor<float>::createCPUTensor({1, 1}, samContext);
+    std::shared_ptr<CudaTensor<float>> predMasks = CudaTensor<float>::createCudaTensor({1, 200, 288, 288}, samContext);
+    std::shared_ptr<CPUTensor<float>> predBoxes = CPUTensor<float>::createCPUTensor({1, 200, 4}, samContext);
+    std::shared_ptr<CPUTensor<float>> predLogits = CPUTensor<float>::createCPUTensor({1, 200}, samContext);
+    std::shared_ptr<CPUTensor<float>> predLogic = CPUTensor<float>::createCPUTensor({1, 1}, samContext);
 
     auto session = std::make_unique<Ort::Session>(samContext.getEnvironment(), samContext.getDecoderPath().c_str(), samContext.getSessionOptions());
-    Ort::IoBinding bindings{*session};
+    BindingBlueprint bindings;
 
-    bindings.BindInput("fpn_feat_0", fpnFeat0->getTensor());
-    bindings.BindInput("fpn_feat_1", fpnFeat1->getTensor());
-    bindings.BindInput("fpn_feat_2", fpnFeat2->getTensor());
-    bindings.BindInput("fpn_pos_2", fpnPos2->getTensor());
-    bindings.BindInput("text_features", textFeatures->getTensor());
-    bindings.BindInput("text_mask", textMasks->getTensor());
-    bindings.BindInput("input_boxes", inputBoxes->getTensor());
-    bindings.BindInput("input_boxes_labels", inputBoxLabels->getTensor());
-    bindings.BindOutput("pred_masks", predMasks->getTensor());
-    bindings.BindOutput("pred_boxes", predBoxes->getTensor());
-    bindings.BindOutput("pred_logits", predLogits->getTensor());
-    bindings.BindOutput("presence_logits", predLogic->getTensor());
+    // Bind all inputs
+    bindings.addBinding(Binding("fpn_feat_0", fpnFeat0, Binding::BindingType::INPUT));
+    bindings.addBinding(Binding("fpn_feat_1", fpnFeat1, Binding::BindingType::INPUT));
+    bindings.addBinding(Binding("fpn_feat_2", fpnFeat2, Binding::BindingType::INPUT));
+    bindings.addBinding(Binding("fpn_pos_2", fpnPos2, Binding::BindingType::INPUT));
+    bindings.addBinding(Binding("text_features", textFeatures, Binding::BindingType::INPUT));
+    bindings.addBinding(Binding("text_mask", textMasks, Binding::BindingType::INPUT));
+    bindings.addBinding(Binding("input_boxes", inputBoxes, Binding::BindingType::INPUT));
+    bindings.addBinding(Binding("input_boxes_labels", inputBoxLabels, Binding::BindingType::INPUT));
+    // Bind all outputs
+    bindings.addBinding(Binding("pred_masks", predMasks, Binding::BindingType::OUTPUT));
+    bindings.addBinding(Binding("pred_boxes", predBoxes, Binding::BindingType::OUTPUT));
+    bindings.addBinding(Binding("pred_logits", predLogits, Binding::BindingType::OUTPUT));
+    bindings.addBinding(Binding("presence_logits", predLogic, Binding::BindingType::OUTPUT));
 
     return std::make_unique<MaskDecoderSession>(
         std::move(session),

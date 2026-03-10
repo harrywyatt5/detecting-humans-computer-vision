@@ -2,6 +2,7 @@
 
 #include "CudaTensor.h"
 #include "ImageProvider.h"
+#include <memory>
 #include <vector>
 #include <cstdint>
 #include <string>
@@ -9,8 +10,8 @@
 
 class PersistentImageInput : public ImageProvider {
 private:
+    std::shared_ptr<cv::cuda::GpuMat> gpuImage;
     cv::cuda::GpuMat resizedImage;
-    cv::cuda::GpuMat gpuImage;
     cv::cuda::Stream stream;
     int x;
     int y;
@@ -24,6 +25,8 @@ public:
     // TODO: implement this!
     void uploadImageFromSensorMsg() {};
     void writeImageToCudaTensor(CudaTensor<float>& tensor) override;
+
+    std::shared_ptr<cv::cuda::GpuMat> getMutableGpuImage();
     int getOriginalX() const override;
     int getOriginalY() const override;
 };

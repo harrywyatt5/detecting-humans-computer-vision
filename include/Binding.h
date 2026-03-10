@@ -12,7 +12,7 @@ public:
     };
 
     const std::string& getBindingName() const;
-    const std::shared_ptr<BlankGenericTensor> getTensor() const;
+    std::shared_ptr<const BlankGenericTensor> getTensor() const;
     BindingType getBindingType() const;
     std::string getBindingTypeAsString() const;
 private:

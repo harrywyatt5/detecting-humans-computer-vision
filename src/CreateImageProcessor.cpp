@@ -4,6 +4,7 @@
 #include "Sam3Context.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudawarping.hpp>
+#include <opencv2/cudaarithm.hpp>
 #include <cuda_runtime.h>
 #include <stdexcept>
 #include <memory>
@@ -18,13 +19,13 @@ CreateImageProcessor::CreateImageProcessor(
     int iY,
     int masks,
     float thres,
-    const std::string& outPath,
     int devId
-) : finalX(x), finalY(y), masksCount(masks), outputPath(outPath), deviceId(devId), threshold(thres) {
-    cpuImage = std::make_shared<cv::Mat>(x, y, CV_8UC3);
+) : finalX(x), finalY(y), masksCount(masks), deviceId(devId), threshold(thres) {
     cv::cuda::setDevice(devId);
+    redMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC3, cv::Scalar(0, 0, 255));
     outputImage = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC3);
-    intermediateImage = cv::cuda::GpuMat(cv::Size(iX, iY), CV_8UC3);
+    outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
+    intermediateMask = cv::cuda::GpuMat(cv::Size(iX, iY), CV_8UC1);
     masksInclusionCpu.resize(masksCount);
 
     allocateMemory();
@@ -85,8 +86,8 @@ void CreateImageProcessor::processOutput(
         );
     }
 
-    launchCreateImage(intermediateImage, stream, outputMasksTensor.getConstStartPtr(), maskInclusionPtr, masksCount);
-    cv::cuda::resize(intermediateImage, outputImage, cv::Size(finalX, finalY), 0, 0, cv::INTER_LINEAR, stream);
+    launchCreateImage(intermediateMask, stream, outputMasksTensor.getConstStartPtr(), maskInclusionPtr, masksCount);
+    cv::cuda::resize(intermediateMask, outputMask, cv::Size(finalX, finalY), 0, 0, cv::INTER_NEAREST, stream);
     
     // Wait until all GPU actions have finished before downloading
     stream.waitForCompletion();
@@ -94,13 +95,10 @@ void CreateImageProcessor::processOutput(
     if (lastError != cudaSuccess) {
         throw std::runtime_error(std::string("Creating image on CUDA device failed. Reason: ") + cudaGetErrorString(lastError));
     }
-
-    outputImage.download(*cpuImage);
-    cv::imwrite(outputPath, *cpuImage);
 }
 
-std::shared_ptr<cv::Mat> CreateImageProcessor::getOutput() const {
-    return cpuImage;
+const cv::cuda::GpuMat& CreateImageProcessor::outputMaskedImage(const cv::cuda::GpuMat& base) {
+    cv::cuda::addWeighted(base, 0.7, redMask, 0.3);
 }
 
 CreateImageProcessor::~CreateImageProcessor() {

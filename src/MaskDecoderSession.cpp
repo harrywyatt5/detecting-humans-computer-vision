@@ -9,13 +9,8 @@
 
 void MaskDecoderSession::run() {
     throwIfNotInitialised();
-    bindings.SynchronizeInputs();
-    session->Run(Ort::RunOptions{nullptr}, bindings);
-}
-
-std::vector<Ort::Value> MaskDecoderSession::runWithResult() {
-    run();
-    return bindings.GetOutputValues();
+    auto sessionBindings = bindings.createIoBindingObject(*session);
+    session->Run(Ort::RunOptions{nullptr}, sessionBindings);
 }
 
 std::shared_ptr<CudaTensor<uint8_t>> MaskDecoderSession::getTextMasksTensor() {

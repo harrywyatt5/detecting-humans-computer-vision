@@ -15,7 +15,7 @@
 template<typename T>
 class CudaTensor : public GenericTensor<T> {
 protected:
-    void releaseMemory() override {
+    void releaseMemory() noexcept override {
         if (this->start == nullptr) {
             return;
         }
@@ -24,8 +24,7 @@ protected:
 
         auto freeResult = cudaFree((void*)this->start);
         if (freeResult != cudaSuccess) {
-            // TODO: don't throw when releasing memory... We might be unwinding a call stack and if we throw again we will crash
-            throw std::runtime_error(std::string("Could not free CUDA memory.... Reason: ") + cudaGetErrorString(freeResult));
+            std::cerr << "Could not free memory on CUDA device. This application is likely leaking memory. Reason: " << cudaGetErrorString(freeResult) << std::endl;
         }
     }
 private:
@@ -33,7 +32,7 @@ private:
     CudaTensor(T* start, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor, int deviceId) 
         : deviceId(deviceId), GenericTensor<T>(start, size, std::move(tensorShape), std::move(tensor)) {
             if (std::is_same<T, int64_t>::value) {
-                std::cout << "Using int64_t on a CUDA tensor is not supported, and will likely be rejected by TensorRT. You should use a CPUTensor" << std::endl;
+                std::cerr << "Using int64_t on a CUDA tensor is not supported, and will likely be rejected by TensorRT. You should use a CPUTensor" << std::endl;
             }
     };
             
@@ -132,9 +131,18 @@ public:
         changeCudaDevice(samContext.getDeviceId());
         T* ptr = createGpuMemory(numValues);
 
-        // TODO: if CreateTensor throws, make sure to free cudaMalloc
-        auto tensor = Ort::Value::CreateTensor<T>(samContext.getCudaMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
-        return std::unique_ptr<CudaTensor<T>>(new CudaTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor), samContext.getDeviceId()));
+        try {
+            auto tensor = Ort::Value::CreateTensor<T>(samContext.getCudaMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
+            return std::unique_ptr<CudaTensor<T>>(new CudaTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor), samContext.getDeviceId()));
+        } catch (const std::exception& exception) {
+            auto result = cudaFree((void*)ptr);
+
+            if (result != cudaSuccess) {
+                std::cerr << "Could not free memory on CUDA device. This application is likely leaking memory. Reason: " << cudaGetErrorString(result) << std::endl;
+            }
+            throw;
+        }
+
     }
 
     static std::unique_ptr<CudaTensor<T>> createCudaTensorWithTypeOverride(std::vector<int64_t> tensorSize, const Sam3Context& samContext, ONNXTensorElementDataType type) {
@@ -143,8 +151,16 @@ public:
         changeCudaDevice(samContext.getDeviceId());
         T* ptr = createGpuMemory(numValues);
 
-        // TODO: if CreateTensor throws, make sure to free cudaMalloc
-        auto tensor = Ort::Value::CreateTensor(samContext.getCudaMemoryInfo(), (void*)ptr, numValues * sizeof(T), tensorSize.data(), tensorSize.size(), type);
-        return std::unique_ptr<CudaTensor<T>>(new CudaTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor), samContext.getDeviceId()));
+        try {
+            auto tensor = Ort::Value::CreateTensor(samContext.getCudaMemoryInfo(), (void*)ptr, numValues * sizeof(T), tensorSize.data(), tensorSize.size(), type);
+            return std::unique_ptr<CudaTensor<T>>(new CudaTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor), samContext.getDeviceId()));
+        } catch (const std::exception& exception) {
+            auto result = cudaFree((void*)ptr);
+
+            if (result != cudaSuccess) {
+                std::cerr << "Could not free memory on CUDA device. This application is likely leaking memory. Reason: " << cudaGetErrorString(result) << std::endl;
+            }
+            throw;
+        }
     }
 };

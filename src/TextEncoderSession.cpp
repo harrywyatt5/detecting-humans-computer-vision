@@ -15,11 +15,6 @@ void TextEncoderSession::run() {
     this->session->Run(Ort::RunOptions{nullptr}, bindings);
 }
 
-std::vector<Ort::Value> TextEncoderSession::runWithResult() {
-    run();
-    return {};
-}
-
 std::shared_ptr<CudaTensor<float>> TextEncoderSession::getTextFeaturesTensor() {
     return textFeaturesTensor;
 }

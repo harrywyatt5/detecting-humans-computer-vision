@@ -11,17 +11,16 @@
 class CreateImageProcessor : public OutputProcessor {
 private:
     int deviceId;
-    // TODO: change this into a uint8[] buffer that we can just pass to ROS2
-    std::shared_ptr<cv::Mat> cpuImage;
-    cv::cuda::GpuMat intermediateImage;
+    cv::cuda::GpuMat redMask;
+    cv::cuda::GpuMat intermediateMask;
     cv::cuda::GpuMat outputImage;
+    cv::cuda::GpuMat outputMask;
     std::vector<uint8_t> masksInclusionCpu;
     uint8_t* maskInclusionPtr;
     int masksCount;
     int finalX;
     int finalY;
     float threshold;
-    std::string outputPath;
     cv::cuda::Stream stream;
 
     void allocateMemory();
@@ -33,7 +32,6 @@ public:
         int intermediateY,
         int masks,
         float threshold,
-        const std::string& outPath,
         int deviceId
     );
     void processOutput(
@@ -42,7 +40,8 @@ public:
         const CPUTensor<float>& outputLogitsTensor,
         const CPUTensor<float>& outputLogicTensor
     ) override;
-    std::shared_ptr<cv::Mat> getOutput() const;
+    const cv::cuda::GpuMat& outputMaskedImage(const cv::cuda::GpuMat& base);
+
     ~CreateImageProcessor() override;
 
     static std::unique_ptr<CreateImageProcessor> createCreateImageProcessor(

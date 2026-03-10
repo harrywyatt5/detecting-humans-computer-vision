@@ -22,9 +22,9 @@ std::unique_ptr<TextEncoderSession> TextEncoderSessionFactory::createSession(con
 
     auto session = std::make_unique<Ort::Session>(context.getEnvironment(), context.getTextEncoderPath().c_str(), context.getSessionOptions());
     BindingBlueprint blueprint;
-    blueprint.AddBinding(Binding("input_ids", inputIds, Binding::BindingType::INPUT));
-    blueprint.AddBinding(Binding("attention_mask", attentionMasks, Binding::BindingType::INPUT));
-    blueprint.AddBinding(Binding("text_features", textFeatures, Binding::BindingType::OUTPUT));
+    blueprint.addBinding(Binding("input_ids", inputIds, Binding::BindingType::INPUT));
+    blueprint.addBinding(Binding("attention_mask", attentionMasks, Binding::BindingType::INPUT));
+    blueprint.addBinding(Binding("text_features", textFeatures, Binding::BindingType::OUTPUT));
 
     // textEncoderBindings.BindInput("input_ids", inputIds->getTensor());
     // textEncoderBindings.BindInput("attention_mask", attentionMasks->getTensor());

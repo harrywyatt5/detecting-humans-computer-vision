@@ -9,7 +9,7 @@ const std::string& Binding::getBindingName() const {
     return name;
 }
 
-const std::shared_ptr<BlankGenericTensor> Binding::getTensor() const {
+std::shared_ptr<const BlankGenericTensor> Binding::getTensor() const {
     return tensor;
 }
 

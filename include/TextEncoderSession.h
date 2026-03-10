@@ -35,7 +35,6 @@ public:
         UninitialisedSession() {}
 
     void run() override;
-    std::vector<Ort::Value> runWithResult() override;
 
     // Getters
     std::shared_ptr<CPUTensor<int64_t>> getInputIdsTensor();

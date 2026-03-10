@@ -9,13 +9,8 @@
 void VisionEncoderSession::run() {
     throwIfNotInitialised();
     isInitialised = false;
-    bindings.SynchronizeInputs();
-    session->Run(Ort::RunOptions{nullptr}, bindings);
-}
-
-std::vector<Ort::Value> VisionEncoderSession::runWithResult() {
-    run();
-    return bindings.GetOutputValues();
+    auto sessionBindings = bindings.createIoBindingObject(*session);
+    session->Run(Ort::RunOptions{nullptr}, sessionBindings);
 }
 
 std::shared_ptr<CudaTensor<float>> VisionEncoderSession::getImageTensor() {
