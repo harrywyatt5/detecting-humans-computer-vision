@@ -13,7 +13,7 @@ int LanguageToken::numOfTokens = 32;
 int64_t LanguageToken::terminatingToken = 49407;
 
 LanguageToken::LanguageToken(std::vector<int64_t> dataVector, std::vector<uint8_t> attentionMaskInput) 
-    : data(std::move(dataVector)), attentionMask(std::move(attentionMaskInput)) 
+    : data(std::move(dataVector)), attentionMask(std::move(attentionMaskInput)), isInitialised(true)
 {
     if (data.size() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error("LanguageToken should contain exactly " + std::to_string(LanguageToken::numOfTokens) + " numbers!");
@@ -25,6 +25,10 @@ LanguageToken::LanguageToken(std::vector<int64_t> dataVector, std::vector<uint8_
 }
 
 void LanguageToken::populateAttentionMaskTensor(GenericTensor<uint8_t>& attentionMaskTensor) const {
+    if (!isInitialised) {
+        throw std::runtime_error("LanguageToken is not initialised");
+    }
+
     if (attentionMaskTensor.getSize() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error(
             "Incompatible attention_mask tensor provided. Tensor expected " 
@@ -38,6 +42,10 @@ void LanguageToken::populateAttentionMaskTensor(GenericTensor<uint8_t>& attentio
 }
 
 void LanguageToken::populateAttentionMaskTensor(GenericTensor<int64_t>& attentionMaskTensor) const {
+    if (!isInitialised) {
+        throw std::runtime_error("LanguageToken is not initialised");
+    }
+
     if (attentionMaskTensor.getSize() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error(
             "Incompatible attention_mask tensor provided. Tensor expected " 
@@ -56,6 +64,10 @@ void LanguageToken::populateAttentionMaskTensor(GenericTensor<int64_t>& attentio
 }
 
 void LanguageToken::populateTextIdsTensor(GenericTensor<int64_t>& textIdsTensor) const {
+    if (!isInitialised) {
+        throw std::runtime_error("LanguageToken is not initialised");
+    }
+
     if (textIdsTensor.getSize() != (size_t)LanguageToken::numOfTokens) {
         throw std::runtime_error(
             "Incompatible text_ids tensor provided. Tensor expected " 

@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
-project(HumanDetectionTest LANGUAGES CXX CUDA)
+project(real_time_humans LANGUAGES CXX CUDA)
+find_package(ament_cmake REQUIRED)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -38,6 +39,8 @@ set(SOURCES
 	src/CreateImageKernel.cu
 	src/Binding.cpp
 	src/BindingBlueprint.cpp
+	src/HumanDetectionNode.cpp
+	src/LoggingLevel.cpp
 )
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -46,19 +49,29 @@ target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/
 find_package(OpenCV 4 REQUIRED HINTS "/opt/cudaopencv")
 find_package(CUDAToolkit REQUIRED)
 find_package(OnnxRuntime REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
-# Link to our libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE
+# Link standard CMAKE libs
+target_link_libraries(${PROJECT_NAME}
 	${OpenCV_LIBS}
 	OnnxRuntime::OnnxRuntime
 	CUDA::cudart
 )
 
+# Link special ROS2 libs
+ament_target_dependencies(${PROJECT_NAME}
+	rclcpp
+	std_msgs
+	ament_index_cpp
+)
+
 # Create a directory for the model cache
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/.engine-cache")
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/sam3-onnx" 
-	DESTINATION "${CMAKE_BINARY_DIR}"
+install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sam3-onnx"
+	DESTINATION share/${PROJECT_NAME}
 )
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/language.token"
-	DESTINATION "${CMAKE_BINARY_DIR}"
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/language.token"
+	DESTINATION share/${PROJECT_NAME}
 )
+ament_package()
