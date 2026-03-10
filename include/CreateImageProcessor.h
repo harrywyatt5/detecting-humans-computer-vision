@@ -11,9 +11,7 @@
 class CreateImageProcessor : public OutputProcessor {
 private:
     int deviceId;
-    cv::cuda::GpuMat redMask;
     cv::cuda::GpuMat intermediateMask;
-    cv::cuda::GpuMat outputImage;
     cv::cuda::GpuMat outputMask;
     std::vector<uint8_t> masksInclusionCpu;
     uint8_t* maskInclusionPtr;
@@ -24,6 +22,7 @@ private:
     cv::cuda::Stream stream;
 
     void allocateMemory();
+    void syncAndCheckCuda();
 public:
     CreateImageProcessor(
         int finalX,
@@ -40,7 +39,7 @@ public:
         const CPUTensor<float>& outputLogitsTensor,
         const CPUTensor<float>& outputLogicTensor
     ) override;
-    const cv::cuda::GpuMat& outputMaskedImage(const cv::cuda::GpuMat& base);
+    void outputMaskedImage(cv::cuda::GpuMat& baseImage, const float mixPercentage);
 
     ~CreateImageProcessor() override;
 
@@ -51,7 +50,6 @@ public:
         int intermediateY,
         int masks,
         float threshold,
-        const std::string& savePath,
         const Sam3Context& context
     );
 };

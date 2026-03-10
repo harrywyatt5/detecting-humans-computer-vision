@@ -27,8 +27,8 @@ int main() {
                             .withBatchLimit(1)
                             .withNumBoxesLimit(1)
                             .build();
-    std::shared_ptr<PersistentImageInput> imageInput = PersistentImageInputFactory().createPersistentImageInput(1920, 1080, 1008, 1008, sam3ModelContext);
-    std::shared_ptr<CreateImageProcessor> createImageProcessor = CreateImageProcessor::createCreateImageProcessor(1920, 1080, 288, 288, 200, 0.8f, "masks.jpg", sam3ModelContext);
+    std::shared_ptr<PersistentImageInput> imageInput = PersistentImageInputFactory().createPersistentImageInput(3000, 2001, 1008, 1008, sam3ModelContext);
+    std::shared_ptr<CreateImageProcessor> createImageProcessor = CreateImageProcessor::createCreateImageProcessor(3000, 2001, 288, 288, 200, 0.8f, sam3ModelContext);
 
     auto persistentModel = PersistentSam3Model::createSam3Model(sam3ModelContext);
     persistentModel.registerOutputProcessor(createImageProcessor);
@@ -38,11 +38,18 @@ int main() {
 
 
     // Mount image
-    imageInput->uploadImageFromDisk("img2.jpg");
+    imageInput->uploadImageFromDisk("img3.jpg");
     auto startTime = std::chrono::high_resolution_clock::now();
     persistentModel.detect(imageInput);
     persistentModel.processOutput();
+    auto mutableInputImage = imageInput->getMutableGpuImage();
+    createImageProcessor->outputMaskedImage(*mutableInputImage, 0.3f);
     auto endTime = std::chrono::high_resolution_clock::now();
+    cv::Mat downloadedImage;
+    cv::Mat image2;
+    mutableInputImage->download(downloadedImage);
+    cv::cvtColor(downloadedImage, image2, cv::COLOR_RGB2BGR);
+    cv::imwrite("masks.jpg", image2);
     std::cout << "Taken " << std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count() << std::endl;
 
     return 0;

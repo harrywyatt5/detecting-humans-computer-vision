@@ -22,8 +22,6 @@ CreateImageProcessor::CreateImageProcessor(
     int devId
 ) : finalX(x), finalY(y), masksCount(masks), deviceId(devId), threshold(thres) {
     cv::cuda::setDevice(devId);
-    redMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC3, cv::Scalar(0, 0, 255));
-    outputImage = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC3);
     outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
     intermediateMask = cv::cuda::GpuMat(cv::Size(iX, iY), CV_8UC1);
     masksInclusionCpu.resize(masksCount);
@@ -65,12 +63,19 @@ void CreateImageProcessor::processOutput(
     const float* logitsPtr = outputLogitsTensor.getConstStartPtr();
 
     float presenceScore = 1.0f / (1.0f + std::exp(-outputLogicTensor.getConstStartPtr()[0]));
+    int count = 0;
 
     for (auto i = 0; i < masksCount; ++i) {
         float score = (1.0f / (1.0f + std::exp(-logitsPtr[i]))) * presenceScore;
-        std::cout << "Mask score: " << score << "\n";
-        masksInclusionCpu[i] = score >= threshold ? 1 : 0;
+        if (score >= threshold) {
+            masksInclusionCpu[i] = 1;
+            ++count;
+        } else {
+            masksInclusionCpu[i] = 0;
+        }
     }
+
+    std::cout << "Number of masks detected: " << count << "\n";
 
     // Copy our inclusion array onto the gpu
     auto error = cudaMemcpy(
@@ -86,19 +91,23 @@ void CreateImageProcessor::processOutput(
         );
     }
 
-    launchCreateImage(intermediateMask, stream, outputMasksTensor.getConstStartPtr(), maskInclusionPtr, masksCount);
+    launchCreateMask(intermediateMask, stream, outputMasksTensor.getConstStartPtr(), maskInclusionPtr, masksCount);
     cv::cuda::resize(intermediateMask, outputMask, cv::Size(finalX, finalY), 0, 0, cv::INTER_NEAREST, stream);
     
-    // Wait until all GPU actions have finished before downloading
-    stream.waitForCompletion();
-    auto lastError = cudaGetLastError();
-    if (lastError != cudaSuccess) {
-        throw std::runtime_error(std::string("Creating image on CUDA device failed. Reason: ") + cudaGetErrorString(lastError));
-    }
+    // Wait until all GPU actions have finished
+    syncAndCheckCuda();
 }
 
-const cv::cuda::GpuMat& CreateImageProcessor::outputMaskedImage(const cv::cuda::GpuMat& base) {
-    cv::cuda::addWeighted(base, 0.7, redMask, 0.3);
+void CreateImageProcessor::outputMaskedImage(cv::cuda::GpuMat& base, const float mixPercentage) {
+    if (mixPercentage < 0.0f || mixPercentage > 1.0f) {
+        throw std::runtime_error("mixPercentage must be between 0.0f and 1.0f (inclusive)");
+    }
+
+    if (base.cols != finalX || base.rows != finalY) {
+        throw std::runtime_error("Provided image must be the same dimensions as mask");
+    }
+
+    launchCreateImage(outputMask, base, stream, mixPercentage);
 }
 
 CreateImageProcessor::~CreateImageProcessor() {
@@ -116,6 +125,15 @@ CreateImageProcessor::~CreateImageProcessor() {
     }
 }
 
+void CreateImageProcessor::syncAndCheckCuda() {
+    stream.waitForCompletion();
+
+    auto error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        throw std::runtime_error(std::string("A CUDA error occurred when trying to process CreateImageProcessor. Reason: ") + cudaGetErrorString(error));
+    }
+}
+
 std::unique_ptr<CreateImageProcessor> CreateImageProcessor::createCreateImageProcessor(
     int x,
     int y,
@@ -123,7 +141,6 @@ std::unique_ptr<CreateImageProcessor> CreateImageProcessor::createCreateImagePro
     int intermediateY,
     int masks,
     float thres,
-    const std::string& savePath,
     const Sam3Context& context
 ) {
     return std::make_unique<CreateImageProcessor>(
@@ -133,7 +150,6 @@ std::unique_ptr<CreateImageProcessor> CreateImageProcessor::createCreateImagePro
         intermediateY,
         masks,
         thres,
-        savePath,
         context.getDeviceId()
     );
 }
