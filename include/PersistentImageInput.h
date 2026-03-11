@@ -2,10 +2,12 @@
 
 #include "CudaTensor.h"
 #include "ImageProvider.h"
+#include <sensor_msgs/msg/image.hpp>
 #include <memory>
 #include <vector>
 #include <cstdint>
 #include <string>
+#include <optional>
 #include <opencv2/opencv.hpp>
 
 class PersistentImageInput : public ImageProvider {
@@ -22,8 +24,7 @@ private:
 public:
     PersistentImageInput(int imageX, int imageY, int resizedX, int resizedY, int deviceId);
     void uploadImageFromDisk(const std::string& path);
-    // TODO: implement this!
-    void uploadImageFromSensorMsg() {};
+    void uploadImageFromSensorMsg(const sensor_msgs::msg::Image& image, const std::optional<cv::ColorConversionCodes> conversion);
     void writeImageToCudaTensor(CudaTensor<float>& tensor) override;
 
     std::shared_ptr<cv::cuda::GpuMat> getMutableGpuImage();

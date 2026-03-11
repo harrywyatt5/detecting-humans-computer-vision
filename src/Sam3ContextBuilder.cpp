@@ -1,6 +1,7 @@
 #include "Sam3ContextBuilder.h"
 
 #include <vector>
+#include <memory>
 #include <onnxruntime_cxx_api.h>
 #include <onnxruntime_c_api.h>
 
@@ -22,14 +23,16 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
         "trt_fp16_enable",
         "trt_max_workspace_size",
         "trt_engine_cache_enable",
-        "trt_engine_cache_path"
+        "trt_engine_cache_path",
+        "trt_cuda_graph_enable"
     };
     tensorRTOptions = {
         "0",
         "1",
         "6442450944", // 6GB
         "1",
-        "./trt_cache"
+        "./trt_cache",
+        "0"
     };
 }
 
@@ -100,7 +103,12 @@ Sam3ContextBuilder& Sam3ContextBuilder::withNumBoxesLimit(const int64_t count) {
     return *this;
 }
 
-Sam3Context Sam3ContextBuilder::build() const {
+Sam3ContextBuilder& Sam3ContextBuilder::withCudaGraphsEnabled(const bool enabled) {
+    tensorRTOptions[5] = enabled ? "1" : "0";
+    return *this;
+}
+
+std::unique_ptr<Sam3Context> Sam3ContextBuilder::build() const {
     Ort::Env env(loggingLevel, applicationName.c_str());
     auto api = Ort::GetApi();
 
@@ -140,7 +148,9 @@ Sam3Context Sam3ContextBuilder::build() const {
         sessionOptions.AddFreeDimensionOverrideByName("num_boxes", numBoxesLimit);
     }
 
-    return Sam3Context(
+    // TODO: ensure caching directory exists (if not make it!)
+
+    return std::make_unique<Sam3Context>(
         std::move(env),
         std::move(sessionOptions),
         deviceId,

@@ -3,6 +3,7 @@
 #include "Sam3Context.h"
 #include <string>
 #include <vector>
+#include <memory>
 #include <cstdint>
 #include <onnxruntime_cxx_api.h>
 #include <onnxruntime_c_api.h>
@@ -39,7 +40,8 @@ public:
     Sam3ContextBuilder& withDecoderPath(const std::string& location);
     Sam3ContextBuilder& withBatchLimit(const int64_t count);
     Sam3ContextBuilder& withNumBoxesLimit(const int64_t count);
-    Sam3Context build() const;
+    Sam3ContextBuilder& withCudaGraphsEnabled(const bool enabled);
+    std::unique_ptr<Sam3Context> build() const;
 
     ~Sam3ContextBuilder() = default;
 };

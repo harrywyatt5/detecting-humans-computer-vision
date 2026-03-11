@@ -51,6 +51,7 @@ find_package(CUDAToolkit REQUIRED)
 find_package(OnnxRuntime REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
 
 # Link standard CMAKE libs

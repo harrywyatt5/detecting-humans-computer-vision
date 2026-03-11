@@ -1,11 +1,16 @@
 #include "PersistentImageInput.h"
+
 #include "CudaTensor.h"
 #include "NormaliseImageKernel.h"
+#include <sensor_msgs/msg/image.hpp>
 #include <opencv2/opencv.hpp>
+#include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <memory>
 #include <cuda_runtime.h>
 #include <stdexcept>
+#include <cstdint>
+#include <optional>
 #include <string>
 
 PersistentImageInput::PersistentImageInput(
@@ -36,6 +41,34 @@ void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
     // Resize on the gpu as it can be parallelised
     cv::cuda::resize(*gpuImage, resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, stream);
     hasUploadedImage = true;
+}
+
+void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Image& image, const std::optional<cv::ColorConversionCodes> conversion) {
+    // Ensure the message has the same size as we're expecting
+    if (image.height != y || image.width != x) {
+        throw std::runtime_error("Image does not match size allocated to this object!");
+    }
+    
+    const cv::Mat cpuImage(
+        image.height,
+        image.width,
+        CV_8UC3,
+        const_cast<uint8_t*>(image.data.data()),
+        image.step
+    );
+
+    // If the colour format needs to be converted, it shouldn't do though!
+    if (conversion.has_value()) {
+        // Super expensive, when we are looking at the incoming images we should definitely warn if this is
+        // the case!
+        cv::cuda::GpuMat temp;
+        temp.upload(cpuImage, stream);
+        cv::cuda::cvtColor(temp, *gpuImage, conversion.value(), 0, stream);
+    } else {
+        gpuImage->upload(cpuImage, stream);
+    }
+
+    cv::cuda::resize(*gpuImage, resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, stream);
 }
 
 void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
