@@ -4,7 +4,6 @@
 #include "CPUTensor.h"
 #include "Sam3Context.h"
 #include <opencv2/opencv.hpp>
-#include <memory>
 #include <cstdint>
 #include <string>
 
@@ -43,7 +42,7 @@ public:
 
     ~CreateImageProcessor() override;
 
-    static std::unique_ptr<CreateImageProcessor> createCreateImageProcessor(
+    static CreateImageProcessor createCreateImageProcessor(
         int x,
         int y,
         int intermediateX,

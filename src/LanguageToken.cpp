@@ -80,7 +80,7 @@ void LanguageToken::populateTextIdsTensor(GenericTensor<int64_t>& textIdsTensor)
     textIdsTensor.copyToBuffer(this->data);
 }
 
-std::unique_ptr<LanguageToken> LanguageToken::createFromFile(const std::string& filePath) {
+LanguageToken LanguageToken::createFromFile(const std::string& filePath) {
     auto bytesToRead = LanguageToken::numOfTokens * sizeof(int64_t);
     std::vector<int64_t> arr(LanguageToken::numOfTokens);
     std::vector<uint8_t> attentionMaskBuff(LanguageToken::numOfTokens, 0);
@@ -117,7 +117,5 @@ std::unique_ptr<LanguageToken> LanguageToken::createFromFile(const std::string& 
         }
     }
 
-    std::cout << std::endl;
-
-    return std::unique_ptr<LanguageToken>(new LanguageToken(std::move(arr), std::move(attentionMaskBuff)));
+    return LanguageToken(std::move(arr), std::move(attentionMaskBuff));
 }

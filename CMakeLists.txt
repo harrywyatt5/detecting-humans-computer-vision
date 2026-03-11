@@ -65,6 +65,7 @@ target_link_libraries(${PROJECT_NAME}
 ament_target_dependencies(${PROJECT_NAME}
 	rclcpp
 	std_msgs
+	sensor_msgs
 	ament_index_cpp
 )
 

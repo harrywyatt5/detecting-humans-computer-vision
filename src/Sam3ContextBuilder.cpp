@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <memory>
+#include <filesystem>
 #include <onnxruntime_cxx_api.h>
 #include <onnxruntime_c_api.h>
 
@@ -108,7 +109,7 @@ Sam3ContextBuilder& Sam3ContextBuilder::withCudaGraphsEnabled(const bool enabled
     return *this;
 }
 
-std::unique_ptr<Sam3Context> Sam3ContextBuilder::build() const {
+Sam3Context Sam3ContextBuilder::build() const {
     Ort::Env env(loggingLevel, applicationName.c_str());
     auto api = Ort::GetApi();
 
@@ -148,9 +149,11 @@ std::unique_ptr<Sam3Context> Sam3ContextBuilder::build() const {
         sessionOptions.AddFreeDimensionOverrideByName("num_boxes", numBoxesLimit);
     }
 
-    // TODO: ensure caching directory exists (if not make it!)
+    // Creates the caching directory so we can save there
+    const std::string& cachePath = tensorRTOptions[4];
+    std::filesystem::create_directories(cachePath);
 
-    return std::make_unique<Sam3Context>(
+    return Sam3Context(
         std::move(env),
         std::move(sessionOptions),
         deviceId,

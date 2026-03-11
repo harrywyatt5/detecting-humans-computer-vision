@@ -7,7 +7,9 @@
 #include "LanguageToken.h"
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <opencv2/opencv.hpp>
 #include <memory>
+#include <optional>
 
 class HumanDetectionNode : public rclcpp::Node {
 private:
@@ -16,6 +18,7 @@ private:
     std::unique_ptr<Sam3Context> samContext;
     std::shared_ptr<CreateImageProcessor> createImageProcessor;
     std::shared_ptr<LanguageToken> promptToken;
+    std::optional<cv::ColorConversionCodes> inputConversion;
     bool isFullyConfigured;
 
     // ROS2 data
@@ -27,6 +30,7 @@ private:
     // Helpers
     void configureSam3Model(const LoggingLevel& loggingLevel);
     void mountPrompt();
+    void configureCameraImageConversion(const sensor_msgs::msg::Image& image);
     void configureNodeFromInitialImage(const sensor_msgs::msg::Image& image);
 public:
     HumanDetectionNode();

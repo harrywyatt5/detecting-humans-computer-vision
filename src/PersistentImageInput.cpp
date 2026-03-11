@@ -69,6 +69,7 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
     }
 
     cv::cuda::resize(*gpuImage, resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, stream);
+    hasUploadedImage = true;
 }
 
 void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {

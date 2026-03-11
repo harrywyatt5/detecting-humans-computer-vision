@@ -134,7 +134,7 @@ void CreateImageProcessor::syncAndCheckCuda() {
     }
 }
 
-std::unique_ptr<CreateImageProcessor> CreateImageProcessor::createCreateImageProcessor(
+CreateImageProcessor CreateImageProcessor::createCreateImageProcessor(
     int x,
     int y,
     int intermediateX,
@@ -143,7 +143,7 @@ std::unique_ptr<CreateImageProcessor> CreateImageProcessor::createCreateImagePro
     float thres,
     const Sam3Context& context
 ) {
-    return std::make_unique<CreateImageProcessor>(
+    return CreateImageProcessor(
         x,
         y,
         intermediateX,

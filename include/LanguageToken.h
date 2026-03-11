@@ -24,5 +24,5 @@ public:
     void populateAttentionMaskTensor(GenericTensor<uint8_t>& attentionMaskTensor) const;
     void populateTextIdsTensor(GenericTensor<int64_t>& textIdsTensor) const;
 
-    static std::unique_ptr<LanguageToken> createFromFile(const std::string& filePath);
+    static LanguageToken createFromFile(const std::string& filePath);
 };
