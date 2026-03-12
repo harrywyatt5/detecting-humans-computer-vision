@@ -21,6 +21,7 @@ PersistentImageInput::PersistentImageInput(
     int cudaDeviceId
 ) : x(imageX), y(imageY), resizedX(resizeX), resizedY(resizeY), hasUploadedImage(false) {
     cv::cuda::setDevice(cudaDeviceId);
+    stream = std::make_shared<cv::cuda::Stream>();
     gpuImage = std::make_shared<GpuImage>(cv::cuda::GpuMat(cv::Size(imageX, imageY), CV_8UC3), cudaDeviceId);
     resizedImage = cv::cuda::GpuMat(cv::Size(resizeX, resizeY), CV_8UC3);
 }

@@ -67,8 +67,11 @@ HumanDetectionNode::HumanDetectionNode()
     imageFrameId = this->get_parameter("masked_image_frame_id").as_string();
     auto loggingLevel = LoggingLevel::fromString(this->get_parameter("log_level").as_string(), true);
     promptToken = std::make_shared<LanguageToken>(LanguageToken::createFromFile(this->get_parameter("encoded_prompt_path").as_string()));
+    RCLCPP_INFO(this->get_logger(), "About to load Sam3Model...");
     configureSam3Model(loggingLevel);
+    RCLCPP_INFO(this->get_logger(), "Sam3 model was loaded. Compiling engine for language prompt and then will be ready!");
     mountPrompt();
+    RCLCPP_INFO(this->get_logger(), "Done! Ready to receive events");
 }
 
 void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
@@ -110,9 +113,9 @@ void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::
 
 void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
     auto start = std::chrono::high_resolution_clock::now();
-    RCLCPP_INFO(this->get_logger(), "Starting to process frame");
     if (!isFullyConfigured) {
         configureNodeFromInitialImage(*msg);
+        RCLCPP_INFO(this->get_logger(), "Configured environment using initial frame correctly");
         // We don't process the current frame, as we're probably far behind due to having to configure the space
         return;
     }
@@ -123,11 +126,11 @@ void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstS
     samModel->processOutput();
 
     createImageProcessor->outputMaskedImage(*imageInput->getMutableGpuImage(), threshold);
-    
+
     auto finalMsg = imageInput->getConstGpuImage()->createRos2ImageMessage(imageFrameId, this->get_clock()->now());
     auto endTime = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - start).count();
-    RCLCPP_INFO(this->get_logger(), "Timing: %ims", duration);
+    RCLCPP_INFO(this->get_logger(), "Timing: %lims", duration);
     maskedImagePub->publish(std::move(finalMsg));
 }
 
@@ -139,8 +142,8 @@ void HumanDetectionNode::configureNodeFromInitialImage(const sensor_msgs::msg::I
     createImageProcessor = std::make_unique<CreateImageProcessor>(CreateImageProcessor::createCreateImageProcessor(
         imageWidth,
         imageHeight,
-        1008,
-        1008,
+        288,
+        288,
         200, 
         this->get_parameter("threshold").as_double(),
         *samContext
