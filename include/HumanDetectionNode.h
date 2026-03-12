@@ -14,15 +14,19 @@
 class HumanDetectionNode : public rclcpp::Node {
 private:
     std::unique_ptr<PersistentSam3Model> samModel;
-    std::unique_ptr<PersistentImageInput> imageInput;
     std::unique_ptr<Sam3Context> samContext;
+    std::shared_ptr<PersistentImageInput> imageInput;
     std::shared_ptr<CreateImageProcessor> createImageProcessor;
     std::shared_ptr<LanguageToken> promptToken;
     std::optional<cv::ColorConversionCodes> inputConversion;
+    // Any parameters which are needed in the main runtime loop, we cache here
+    std::string imageFrameId; 
+    float threshold;
     bool isFullyConfigured;
 
     // ROS2 data
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr leftCameraSub;
+    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr maskedImagePub;
 
     // Callbacks
     void leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg);

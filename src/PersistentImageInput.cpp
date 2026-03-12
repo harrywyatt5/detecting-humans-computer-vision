@@ -21,7 +21,7 @@ PersistentImageInput::PersistentImageInput(
     int cudaDeviceId
 ) : x(imageX), y(imageY), resizedX(resizeX), resizedY(resizeY), hasUploadedImage(false) {
     cv::cuda::setDevice(cudaDeviceId);
-    gpuImage = std::make_shared<cv::cuda::GpuMat>(cv::Size(imageX, imageY), CV_8UC3);
+    gpuImage = std::make_shared<GpuImage>(cv::cuda::GpuMat(cv::Size(imageX, imageY), CV_8UC3), cudaDeviceId);
     resizedImage = cv::cuda::GpuMat(cv::Size(resizeX, resizeY), CV_8UC3);
 }
 
@@ -36,10 +36,10 @@ void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
 
     cv::Mat convertedImg;
     cv::cvtColor(img, convertedImg, cv::COLOR_BGR2RGB);
-    gpuImage->upload(convertedImg, stream);
+    gpuImage->uploadCpuImage(convertedImg, stream);
 
     // Resize on the gpu as it can be parallelised
-    cv::cuda::resize(*gpuImage, resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, stream);
+    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, *stream);
     hasUploadedImage = true;
 }
 
@@ -62,13 +62,13 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
         // Super expensive, when we are looking at the incoming images we should definitely warn if this is
         // the case!
         cv::cuda::GpuMat temp;
-        temp.upload(cpuImage, stream);
-        cv::cuda::cvtColor(temp, *gpuImage, conversion.value(), 0, stream);
+        temp.upload(cpuImage, *stream);
+        cv::cuda::cvtColor(temp, gpuImage->getMutableGpuMat(), conversion.value(), 0, *stream);
     } else {
-        gpuImage->upload(cpuImage, stream);
+        gpuImage->uploadCpuImage(cpuImage, stream);
     }
 
-    cv::cuda::resize(*gpuImage, resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, stream);
+    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, *stream);
     hasUploadedImage = true;
 }
 
@@ -83,9 +83,9 @@ void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
     }
 
     tensor.setCudaDeviceToTensor();
-    launchNormaliseImage(resizedImage, stream, tensor.getStartPtr());
+    launchNormaliseImage(resizedImage, *stream, tensor.getStartPtr());
 
-    stream.waitForCompletion();
+    stream->waitForCompletion();
     // Throw if the kernel crashes for some reason
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
@@ -93,7 +93,11 @@ void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
     }
 }
 
-std::shared_ptr<cv::cuda::GpuMat> PersistentImageInput::getMutableGpuImage() {
+std::shared_ptr<GpuImage> PersistentImageInput::getMutableGpuImage() {
+    return gpuImage;
+}
+
+std::shared_ptr<const GpuImage> PersistentImageInput::getConstGpuImage() const {
     return gpuImage;
 }
 

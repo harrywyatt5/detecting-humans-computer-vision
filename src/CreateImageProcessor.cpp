@@ -1,6 +1,7 @@
 #include "CreateImageProcessor.h"
 
 #include "CreateImageKernel.h"
+#include "GpuImage.h"
 #include "Sam3Context.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudawarping.hpp>
@@ -98,16 +99,17 @@ void CreateImageProcessor::processOutput(
     syncAndCheckCuda();
 }
 
-void CreateImageProcessor::outputMaskedImage(cv::cuda::GpuMat& base, const float mixPercentage) {
+void CreateImageProcessor::outputMaskedImage(GpuImage& base, const float mixPercentage) {
+    auto baseImage = base.getMutableGpuMat();
     if (mixPercentage < 0.0f || mixPercentage > 1.0f) {
         throw std::runtime_error("mixPercentage must be between 0.0f and 1.0f (inclusive)");
     }
 
-    if (base.cols != finalX || base.rows != finalY) {
+    if (baseImage.cols != finalX || baseImage.rows != finalY) {
         throw std::runtime_error("Provided image must be the same dimensions as mask");
     }
 
-    launchCreateImage(outputMask, base, stream, mixPercentage);
+    launchCreateImage(outputMask, baseImage, stream, mixPercentage);
 }
 
 CreateImageProcessor::~CreateImageProcessor() {

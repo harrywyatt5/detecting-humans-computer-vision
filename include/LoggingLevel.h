@@ -33,4 +33,10 @@ public:
     }
 
     static LoggingLevel fromString(const std::string& value, bool throwOnInvalid);
+
+    static const LoggingLevel DEBUG;
+    static const LoggingLevel INFO;
+    static const LoggingLevel WARNING;
+    static const LoggingLevel ERROR;
+    static const LoggingLevel FATAL;
 };

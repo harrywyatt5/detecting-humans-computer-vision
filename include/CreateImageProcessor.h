@@ -2,6 +2,7 @@
 
 #include "OutputProcessor.h"
 #include "CPUTensor.h"
+#include "GpuImage.h"
 #include "Sam3Context.h"
 #include <opencv2/opencv.hpp>
 #include <cstdint>
@@ -38,7 +39,7 @@ public:
         const CPUTensor<float>& outputLogitsTensor,
         const CPUTensor<float>& outputLogicTensor
     ) override;
-    void outputMaskedImage(cv::cuda::GpuMat& baseImage, const float mixPercentage);
+    void outputMaskedImage(GpuImage& baseImage, const float mixPercentage);
 
     ~CreateImageProcessor() override;
 

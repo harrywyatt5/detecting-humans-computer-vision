@@ -4,6 +4,12 @@
 #include <stdexcept>
 #include <string>
 
+const LoggingLevel LoggingLevel::DEBUG = LoggingLevel(LoggingLevel::DEBUG);
+const LoggingLevel LoggingLevel::INFO = LoggingLevel(LoggingLevel::INFO);
+const LoggingLevel LoggingLevel::WARNING = LoggingLevel(LoggingLevel::WARNING);
+const LoggingLevel LoggingLevel::ERROR = LoggingLevel(LoggingLevel::ERROR);
+const LoggingLevel LoggingLevel::FATAL = LoggingLevel(LoggingLevel::FATAL);
+
 std::string LoggingLevel::toString() const {
     switch (logLevel) {
         case LoggingLevel::Level::DEBUG:

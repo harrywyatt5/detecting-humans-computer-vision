@@ -9,9 +9,12 @@
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <onnxruntime_cxx_api.h>
+#include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/image_encodings.hpp>
 #include <cstdlib>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <filesystem>
 
@@ -21,6 +24,7 @@ HumanDetectionNode::HumanDetectionNode()
         samContext(nullptr),
         promptToken(nullptr),
         createImageProcessor(nullptr),
+        threshold(0.0f),
         isFullyConfigured(false),
         Node("human_detection_node")
 {
@@ -38,8 +42,10 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<int64_t>("maximum_vram", 6442450944LL); // TODO: allow input that is more readable?
     this->declare_parameter<int>("cuda_device_id", 0);
     this->declare_parameter<float>("threshold", 0.85f);
-    this->declare_parameter<std::string>("camera_left_topic", "");
-    this->declare_parameter<std::string>("camera_right_topic", "");
+    this->declare_parameter<std::string>("camera_left_topic", "/left_eye_cam/Image");
+    this->declare_parameter<std::string>("camera_right_topic", "/right_eye_cam/Image");
+    this->declare_parameter<std::string>("masked_image_topic", "masked_image");
+    this->declare_parameter<std::string>("masked_image_frame_id", "image_frame");
 
     // Prepare subscribers
     rclcpp::QoS qosProfile(1);
@@ -48,10 +54,16 @@ HumanDetectionNode::HumanDetectionNode()
     leftCameraSub = this->create_subscription<sensor_msgs::msg::Image>(
         this->get_parameter("camera_left_topic").as_string(),
         qosProfile,
-        std::bind(&HumanDetectionNode::leftImageCallback, std::placeholders::_1)
+        std::bind(&HumanDetectionNode::leftImageCallback, this, std::placeholders::_1)
+    );
+    maskedImagePub = this->create_publisher<sensor_msgs::msg::Image>(
+        this->get_parameter("masked_image_topic").as_string(),
+        10
     );
 
     // Configurables
+    threshold = this->get_parameter("threshold").as_double();
+    imageFrameId = this->get_parameter("masked_image_frame_id").as_string();
     auto loggingLevel = LoggingLevel::fromString(this->get_parameter("log_level").as_string(), true);
     promptToken = std::make_shared<LanguageToken>(LanguageToken::createFromFile(this->get_parameter("encoded_prompt_path").as_string()));
     configureSam3Model(loggingLevel);
@@ -82,8 +94,17 @@ void HumanDetectionNode::mountPrompt() {
     samModel->mountAndCalculatePrompt(promptToken);
 }
 
-void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::Image& image) {
-    
+void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::Image& img) {
+    auto encoding = img.encoding;
+    if (encoding == sensor_msgs::image_encodings::BGR8) {
+        inputConversion = cv::COLOR_BGR2RGB;
+    } else if (encoding == sensor_msgs::image_encodings::RGBA8) {
+        inputConversion = cv::COLOR_RGBA2RGB;
+    } else if (encoding == sensor_msgs::image_encodings::RGB8) {
+        inputConversion = std::nullopt;
+    } else {
+        throw std::runtime_error("Unknown image camera configuration " + encoding);
+    }
 }
 
 void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
@@ -94,14 +115,21 @@ void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstS
     }
 
     // Mount the image. This is zero copy on the CPU (although has to be uploaded to GPU and resized)
-    imageInput->uploadImageFromSensorMsg(*msg);
+    imageInput->uploadImageFromSensorMsg(*msg, inputConversion);
+    samModel->detect(imageInput);
+    samModel->processOutput();
+
+    createImageProcessor->outputMaskedImage(*imageInput->getMutableGpuImage(), threshold);
+    
+    auto finalMsg = imageInput->getConstGpuImage()->createRos2ImageMessage(imageFrameId, this->get_clock()->now());
+    maskedImagePub->publish(std::move(finalMsg));
 }
 
 void HumanDetectionNode::configureNodeFromInitialImage(const sensor_msgs::msg::Image& image) {
     int imageHeight = (int)image.height;
     int imageWidth = (int)image.width;
 
-    imageInput = std::make_unique<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 1008, 1008, *samContext));
+    imageInput = std::make_shared<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 1008, 1008, *samContext));
     createImageProcessor = std::make_unique<CreateImageProcessor>(CreateImageProcessor::createCreateImageProcessor(
         imageWidth,
         imageHeight,
@@ -113,6 +141,7 @@ void HumanDetectionNode::configureNodeFromInitialImage(const sensor_msgs::msg::I
     ));
 
     samModel->registerOutputProcessor(createImageProcessor);
+    configureCameraImageConversion(image);
 
     // SAM3 is now ready to start accepting frames
     isFullyConfigured = true;
