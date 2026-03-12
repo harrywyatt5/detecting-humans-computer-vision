@@ -14,6 +14,7 @@
 #include <sensor_msgs/image_encodings.hpp>
 #include <cstdlib>
 #include <cstdint>
+#include <chrono>
 #include <stdexcept>
 #include <string>
 #include <filesystem>
@@ -34,7 +35,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<int>("max_cpu_threads", 1);
     this->declare_parameter<bool>("use_fp16", true);
     this->declare_parameter<int>("cuda_device", 0);
-    this->declare_parameter<std::string>("log_level", "info");
+    this->declare_parameter<std::string>("log_level", "error");
     this->declare_parameter<std::string>("sam3_text_encoder_path", shareLocation + "/sam3-onnx/text-encoder-fp16.onnx");
     this->declare_parameter<std::string>("sam3_vision_encoder_path", shareLocation + "/sam3-onnx/vision-encoder-fp16.onnx");
     this->declare_parameter<std::string>("sam3_decoder_path", shareLocation + "/sam3-onnx/geo-encoder-mask-decoder-fp16.onnx");
@@ -108,6 +109,7 @@ void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::
 }
 
 void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
+    auto start = std::chrono::high_resolution_clock::now();
     if (!isFullyConfigured) {
         configureNodeFromInitialImage(*msg);
         // We don't process the current frame, as we're probably far behind due to having to configure the space
@@ -122,6 +124,9 @@ void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstS
     createImageProcessor->outputMaskedImage(*imageInput->getMutableGpuImage(), threshold);
     
     auto finalMsg = imageInput->getConstGpuImage()->createRos2ImageMessage(imageFrameId, this->get_clock()->now());
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - start).count();
+    RCLCPP_INFO(this->get_logger(), "Timing: %ims", duration);
     maskedImagePub->publish(std::move(finalMsg));
 }
 
