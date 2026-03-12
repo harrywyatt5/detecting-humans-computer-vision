@@ -71,6 +71,10 @@ ament_target_dependencies(${PROJECT_NAME}
 )
 
 # Create a directory for the model cache
+install(TARGETS
+	real_time_humans
+	DESTINATIONS lib/${PROJECT_NAME}
+)
 install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sam3-onnx"
 	DESTINATION share/${PROJECT_NAME}
 )
