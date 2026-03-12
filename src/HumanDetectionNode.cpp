@@ -110,6 +110,7 @@ void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::
 
 void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
     auto start = std::chrono::high_resolution_clock::now();
+    RCLCPP_INFO(this->get_logger(), "Starting to process frame");
     if (!isFullyConfigured) {
         configureNodeFromInitialImage(*msg);
         // We don't process the current frame, as we're probably far behind due to having to configure the space
