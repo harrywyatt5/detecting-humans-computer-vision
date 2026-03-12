@@ -38,7 +38,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<std::string>("sam3_text_encoder_path", shareLocation + "/sam3-onnx/text-encoder-fp16.onnx");
     this->declare_parameter<std::string>("sam3_vision_encoder_path", shareLocation + "/sam3-onnx/vision-encoder-fp16.onnx");
     this->declare_parameter<std::string>("sam3_decoder_path", shareLocation + "/sam3-onnx/geo-encoder-mask-decoder-fp16.onnx");
-    this->declare_parameter<std::string>("encoded_prompt_path", shareLocation + "language.token");
+    this->declare_parameter<std::string>("encoded_prompt_path", shareLocation + "/language.token");
     this->declare_parameter<int64_t>("maximum_vram", 6442450944LL); // TODO: allow input that is more readable?
     this->declare_parameter<int>("cuda_device_id", 0);
     this->declare_parameter<float>("threshold", 0.85f);
