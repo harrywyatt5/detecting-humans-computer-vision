@@ -30,11 +30,7 @@ protected:
 private:
     int deviceId;
     CudaTensor(T* start, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor, int id) 
-        : GenericTensor<T>(start, size, std::move(tensorShape), std::move(tensor)), deviceId(id) {
-            if (std::is_same<T, int64_t>::value) {
-                std::cerr << "Using int64_t on a CUDA tensor is not supported, and will likely be rejected by TensorRT. You should use a CPUTensor" << std::endl;
-            }
-    };
+        : GenericTensor<T>(start, size, std::move(tensorShape), std::move(tensor)), deviceId(id) {}
             
     static void changeCudaDevice(const int deviceId) {
         auto changeResult = cudaSetDevice(deviceId);

@@ -26,3 +26,7 @@ std::shared_ptr<CPUTensor<int64_t>> TextEncoderSession::getAttentionMaskTensor()
 std::shared_ptr<CPUTensor<int64_t>> TextEncoderSession::getInputIdsTensor() {
     return inputIdsTensor;
 }
+
+std::shared_ptr<CudaTensor<uint8_t>> TextEncoderSession::getTextMaskTensor() {
+    return textMaskTensor;
+}

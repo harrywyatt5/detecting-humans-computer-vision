@@ -28,7 +28,7 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
     // We don't want to pass bounding boxes to track, so we block out these values
     std::shared_ptr<CudaTensor<float>> inputBoxes = CudaTensor<float>::createCudaTensor({1, 1, 4}, samContext);
     inputBoxes->copyToBuffer(std::vector<float>(4, 0.0f));
-    std::shared_ptr<CPUTensor<int64_t>> inputBoxLabels = CPUTensor<int64_t>::createCPUTensor({1, 1}, samContext);
+    std::shared_ptr<CudaTensor<int64_t>> inputBoxLabels = CudaTensor<int64_t>::createCudaTensor({1, 1}, samContext);
     inputBoxLabels->copyToBuffer(std::vector<int64_t>(1, -10));
 
     // Outputs

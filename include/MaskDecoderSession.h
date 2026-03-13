@@ -22,8 +22,7 @@ private:
     std::shared_ptr<CudaTensor<float>> textFeatures;
     std::shared_ptr<CudaTensor<uint8_t>> textMasks;
     std::shared_ptr<CudaTensor<float>> inputBoxes;
-    // int64_t have to be on the CPU unfortunately...
-    std::shared_ptr<CPUTensor<int64_t>> inputBoxesLabels;
+    std::shared_ptr<CudaTensor<int64_t>> inputBoxesLabels;
 
     // Outputs
     std::shared_ptr<CudaTensor<float>> predicateMasks;
@@ -41,7 +40,7 @@ public:
         std::shared_ptr<CudaTensor<float>> textFeatures,
         std::shared_ptr<CudaTensor<uint8_t>> textMasks,
         std::shared_ptr<CudaTensor<float>> inputBoxes,
-        std::shared_ptr<CPUTensor<int64_t>> inputBoxesLabels,
+        std::shared_ptr<CudaTensor<int64_t>> inputBoxesLabels,
         std::shared_ptr<CudaTensor<float>> pMasks,
         std::shared_ptr<CPUTensor<float>> pBoxes,
         std::shared_ptr<CPUTensor<float>> pLogits,

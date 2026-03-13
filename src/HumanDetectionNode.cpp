@@ -43,8 +43,8 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<int64_t>("maximum_vram", 6442450944LL); // TODO: allow input that is more readable?
     this->declare_parameter<int>("cuda_device_id", 0);
     this->declare_parameter<float>("threshold", 0.85f);
-    this->declare_parameter<std::string>("camera_left_topic", "/left_eye_cam/Image");
-    this->declare_parameter<std::string>("camera_right_topic", "/right_eye_cam/Image");
+    this->declare_parameter<std::string>("camera_left_topic", "/left_eye_cam");
+    this->declare_parameter<std::string>("camera_right_topic", "/right_eye_cam");
     this->declare_parameter<std::string>("masked_image_topic", "masked_image");
     this->declare_parameter<std::string>("masked_image_frame_id", "image_frame");
 
@@ -89,7 +89,7 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
                     .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_ALL)
                     .withLoggingLevel(loggingLevel.toOrtLoggingLevel())
                     .withMaxGPUMemory(this->get_parameter("maximum_vram").as_int())
-                    .withCudaGraphsEnabled(false);
+                    .withCudaGraphsEnabled(true);
     samContext = std::make_unique<Sam3Context>(builder.build());
     samModel = std::make_unique<PersistentSam3Model>(PersistentSam3Model::createSam3Model(*samContext));
 }
