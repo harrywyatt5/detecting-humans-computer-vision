@@ -2,6 +2,7 @@
 
 #include "GenericTensor.h"
 #include "Sam3Context.h"
+#include <cuda_runtime.h>
 #include <onnxruntime_cxx_api.h>
 #include <vector>
 #include <memory>
@@ -17,18 +18,19 @@ protected:
             return;
         }
 
-        delete[] this->start;
+        cudaFreeHost(this->start);
+        this->start = nullptr;
     }
 private:
     CPUTensor(T* start, size_t size, std::vector<int64_t> tensorShape, Ort::Value tensor) 
         : GenericTensor<T>(start, size, std::move(tensorShape), std::move(tensor)) {}
 
     static T* createCPUMemory(size_t elementCount) {
-        T* ptr = new T[elementCount];
+        T* ptr;
+        cudaHostAlloc((void**)&ptr, elementCount * sizeof(T));
         std::memset(ptr, 0, elementCount * sizeof(T));
-        
         return ptr;
-    } 
+    }
 public:
     // Unsafe (and probably shouldn't be public). Only use if you know what you're doing
     void copyToBuffer(const std::vector<T>& sourceBuffer) override {
@@ -67,7 +69,7 @@ public:
             auto tensor = Ort::Value::CreateTensor(samContext.getCpuMemoryInfo(), (void*)ptr, numValues * sizeof(T), tensorSize.data(), tensorSize.size(), dataType);
             return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));
         } catch (const std::exception& exception) {
-            delete[] ptr;
+            cudaFreeHost(ptr);
             throw;
         }
     }
@@ -81,7 +83,7 @@ public:
             auto tensor = Ort::Value::CreateTensor<T>(samContext.getCpuMemoryInfo(), ptr, numValues, tensorSize.data(), tensorSize.size());
             return std::unique_ptr<CPUTensor<T>>(new CPUTensor<T>(ptr, numValues, std::move(tensorSize), std::move(tensor)));
         } catch (const std::exception& exception) {
-            delete[] ptr;
+            cudaFreeHost(ptr);
             throw;
         }
     }

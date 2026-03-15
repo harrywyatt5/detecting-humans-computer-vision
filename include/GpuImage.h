@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CudaDevice.h"
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -10,12 +11,10 @@
 class GpuImage {
 private:
     cv::cuda::GpuMat internalData;
-    int deviceId;
-
-    void setCudaDevice() const;
+    std::shared_ptr<CudaDevice> cudaDevice;
 public:
-    GpuImage(cv::cuda::GpuMat mat, int devId) : internalData(std::move(mat)), deviceId(devId) {}
-    void uploadCpuImage(const cv::Mat& cpuImage, std::shared_ptr<cv::cuda::Stream> stream = nullptr);
+    GpuImage(cv::cuda::GpuMat mat, int devId);
+    void uploadCpuImage(const cv::Mat& cpuImage);
     void toNewColourTarget(const cv::ColorConversionCodes code);
     void download(cv::Mat& target) const;
     int getWidth() const;

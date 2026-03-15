@@ -15,7 +15,6 @@ class PersistentImageInput : public ImageProvider {
 private:
     std::shared_ptr<GpuImage> gpuImage;
     cv::cuda::GpuMat resizedImage;
-    std::shared_ptr<cv::cuda::Stream> stream;
     int x;
     int y;
     int resizedX;

@@ -1,5 +1,6 @@
 #include "GpuImage.h"
 
+#include "CudaDevicesSingleton.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -8,32 +9,26 @@
 #include <memory>
 #include <stdexcept>
 
-void GpuImage::uploadCpuImage(const cv::Mat& cpuImage, std::shared_ptr<cv::cuda::Stream> stream) {
-    setCudaDevice();
-
-    if (stream != nullptr) {
-        internalData.upload(cpuImage, *stream);
-    } else {
-        internalData.upload(cpuImage);
-    }
-
+GpuImage::GpuImage(cv::cuda::GpuMat mat, int devId) : internalData(std::move(mat)) {
+    cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
 }
 
-void GpuImage::setCudaDevice() const {
-    cv::cuda::setDevice(deviceId);
+void GpuImage::uploadCpuImage(const cv::Mat& cpuImage) {
+    cudaDevice->switchCudaDevice();
+    internalData.upload(cpuImage, cudaDevice->getOpenCVCudaStream());
 }
 
 void GpuImage::toNewColourTarget(cv::ColorConversionCodes code) {
-    setCudaDevice();
+    cudaDevice->switchCudaDevice();
     cv::cuda::GpuMat tempMat;
-    cv::cuda::cvtColor(internalData, tempMat, code);
+    cv::cuda::cvtColor(internalData, tempMat, code, 0, cudaDevice->getOpenCVCudaStream());
 
     internalData.swap(tempMat);
 }
 
 void GpuImage::download(cv::Mat& target) const {
-    setCudaDevice();
-    internalData.download(target);
+    cudaDevice->switchCudaDevice();
+    internalData.download(target, cudaDevice->getOpenCVCudaStream());
 }
 
 int GpuImage::getHeight() const {
@@ -53,7 +48,7 @@ cv::cuda::GpuMat& GpuImage::getMutableGpuMat() {
 }
 
 std::unique_ptr<sensor_msgs::msg::Image> GpuImage::createRos2ImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) const {
-    setCudaDevice();
+    cudaDevice->switchCudaDevice();
     auto msg = std::make_unique<sensor_msgs::msg::Image>();
 
     msg->header.stamp = broadcastTime;
@@ -71,7 +66,7 @@ std::unique_ptr<sensor_msgs::msg::Image> GpuImage::createRos2ImageMessage(const 
         CV_8UC3,
         msg->data.data()
     );
-    internalData.download(cpuImage);
+    internalData.download(cpuImage, cudaDevice->getOpenCVCudaStream());
 
     return msg;
 }
