@@ -3,6 +3,8 @@
 #include "CreateImageKernel.h"
 #include "GpuImage.h"
 #include "Sam3Context.h"
+#include "CudaDevicesSingleton.h"
+#include "CudaDevice.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
@@ -21,31 +23,31 @@ CreateImageProcessor::CreateImageProcessor(
     int masks,
     float thres,
     int devId
-) : finalX(x), finalY(y), masksCount(masks), threshold(thres), deviceId(devId) {
-    cv::cuda::setDevice(devId);
+) : finalX(x), finalY(y), masksCount(masks), threshold(thres) {
+    cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
+    cudaDevice->switchCudaDevice();
     outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
     intermediateMask = cv::cuda::GpuMat(cv::Size(iX, iY), CV_8UC1);
-    masksInclusionCpu.resize(masksCount);
 
     allocateMemory();
 }
 
 void CreateImageProcessor::allocateMemory() {
-    auto switchError = cudaSetDevice(deviceId);
-
-    if (switchError != cudaSuccess) {
-        throw std::runtime_error(
-            std::string("Failed to switch CUDA device. Reason: ") 
-            + cudaGetErrorString(switchError)
-        );
-    }
-
+    cudaDevice->switchCudaDevice();
     auto allocateError = cudaMalloc((void**)&maskInclusionPtr, masksCount * sizeof(uint8_t));
 
     if (allocateError != cudaSuccess) {
         throw std::runtime_error(
             std::string("Failed to allocate bytes on the CUDA device. Reason: ")
             + cudaGetErrorString(allocateError)
+        );
+    }
+
+    auto hostAllocateError = cudaHostAlloc((void**)&maskInclusionCpuPtr, masksCount * sizeof(uint8_t), cudaHostAllocDefault);
+    if (hostAllocateError != cudaSuccess) {
+        throw std::runtime_error(
+            std::string("Failed to allocate pinned memory. Reason: ")
+            + cudaGetErrorString(hostAllocateError)
         );
     }
 }
@@ -56,6 +58,9 @@ void CreateImageProcessor::processOutput(
     const CPUTensor<float>& outputLogitsTensor,
     const CPUTensor<float>& outputLogicTensor
 ) {
+    // Sync the stream here so our CPUTensors have all our values
+    cudaDevice->waitForCompletion();
+
     // Sanity check
     if (outputLogitsTensor.getSize() != (size_t)masksCount) {
         throw std::runtime_error("Mismatch between CreateImageProcessor config and numbers of logits in tensor");
@@ -69,21 +74,22 @@ void CreateImageProcessor::processOutput(
     for (auto i = 0; i < masksCount; ++i) {
         float score = (1.0f / (1.0f + std::exp(-logitsPtr[i]))) * presenceScore;
         if (score >= threshold) {
-            masksInclusionCpu[i] = 1;
+            maskInclusionCpuPtr[i] = 1;
             ++count;
         } else {
-            masksInclusionCpu[i] = 0;
+            maskInclusionCpuPtr[i] = 0;
         }
     }
 
     std::cout << "Number of masks detected: " << count << "\n";
 
     // Copy our inclusion array onto the gpu
-    auto error = cudaMemcpy(
+    auto error = cudaMemcpyAsync(
         (void*)maskInclusionPtr,
-        (void*)masksInclusionCpu.data(),
+        (void*)maskInclusionCpuPtr,
         masksCount * sizeof(uint8_t),
-        cudaMemcpyHostToDevice
+        cudaMemcpyHostToDevice,
+        cudaDevice->getCudaStream()
     );
     if (error != cudaSuccess) {
         throw std::runtime_error(
@@ -92,8 +98,8 @@ void CreateImageProcessor::processOutput(
         );
     }
 
-    launchCreateMask(intermediateMask, stream, outputMasksTensor.getConstStartPtr(), maskInclusionPtr, masksCount);
-    cv::cuda::resize(intermediateMask, outputMask, cv::Size(finalX, finalY), 0, 0, cv::INTER_NEAREST, stream);
+    launchCreateMask(intermediateMask, cudaDevice->getOpenCVCudaStream(), outputMasksTensor.getConstStartPtr(), maskInclusionPtr, masksCount);
+    cv::cuda::resize(intermediateMask, outputMask, cv::Size(finalX, finalY), 0, 0, cv::INTER_NEAREST, cudaDevice->getOpenCVCudaStream());
     
     // Wait until all GPU actions have finished
     syncAndCheckCuda();
@@ -109,26 +115,38 @@ void CreateImageProcessor::outputMaskedImage(GpuImage& base, const float mixPerc
         throw std::runtime_error("Provided image must be the same dimensions as mask");
     }
 
-    launchCreateImage(outputMask, baseImage, stream, mixPercentage);
+    launchCreateImage(outputMask, baseImage, cudaDevice->getOpenCVCudaStream(), mixPercentage);
 }
 
 CreateImageProcessor::~CreateImageProcessor() {
-    if (maskInclusionPtr == nullptr) {
-        return;
+    if (maskInclusionPtr != nullptr) {
+        auto error = cudaFree((void*)maskInclusionPtr);
+
+        if (error != cudaSuccess) {
+            // We don't throw here because we could be unwinding anyway...
+            std::cerr 
+                << "Could not free CUDA memory. This application may be leaking memory. Reason: " 
+                << cudaGetErrorString(error)
+                << std::endl;
+        }
+        maskInclusionPtr = nullptr;
     }
 
-    auto error = cudaFree((void*)maskInclusionPtr);
-    if (error != cudaSuccess) {
-        // We don't throw here because we could be unwinding anyway...
-        std::cerr 
-            << "Could not free CUDA memory. This application may be leaking memory. Reason: " 
-            << cudaGetErrorString(error)
-            << std::endl;
+    if (maskInclusionCpuPtr != nullptr) {
+        auto error = cudaFreeHost((void*)maskInclusionCpuPtr);
+
+        if (error != cudaSuccess) {
+            std::cerr 
+                << "Could not free pinned host memory. This application may be leaking memory. Reason: " 
+                << cudaGetErrorString(error)
+                << std::endl;
+        }
+        maskInclusionCpuPtr = nullptr;
     }
 }
 
 void CreateImageProcessor::syncAndCheckCuda() {
-    stream.waitForCompletion();
+    cudaDevice->waitForCompletion();
 
     auto error = cudaGetLastError();
     if (error != cudaSuccess) {
@@ -154,4 +172,12 @@ CreateImageProcessor CreateImageProcessor::createCreateImageProcessor(
         thres,
         context.getDeviceId()
     );
+}
+
+CreateImageProcessor::CreateImageProcessor(CreateImageProcessor&& other) noexcept 
+    : finalX(other.finalX), finalY(other.finalY), masksCount(other.masksCount),
+        threshold(other.threshold), intermediateMask(std::move(other.intermediateMask)), outputMask(std::move(other.outputMask)),
+        maskInclusionCpuPtr(other.maskInclusionCpuPtr), maskInclusionPtr(other.maskInclusionPtr), cudaDevice(other.cudaDevice) {
+            other.maskInclusionCpuPtr = nullptr;
+            other.maskInclusionPtr = nullptr;
 }

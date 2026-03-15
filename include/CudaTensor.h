@@ -26,6 +26,8 @@ protected:
         if (freeResult != cudaSuccess) {
             std::cerr << "Could not free memory on CUDA device. This application is likely leaking memory. Reason: " << cudaGetErrorString(freeResult) << std::endl;
         }
+
+        this->start = nullptr;
     }
 private:
     int deviceId;

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <cuda_runtime.h>
 #include <onnxruntime_cxx_api.h>
 #include <onnxruntime_c_api.h>
 
@@ -40,6 +41,8 @@ public:
     Sam3ContextBuilder& withBatchLimit(const int64_t count);
     Sam3ContextBuilder& withNumBoxesLimit(const int64_t count);
     Sam3ContextBuilder& withCudaGraphsEnabled(const bool enabled);
+    Sam3ContextBuilder& withComputeStreamEnabled(const bool enabled);
+    Sam3ContextBuilder& withComputeStream(cudaStream_t& computeStream);
     Sam3Context build() const;
 
     ~Sam3ContextBuilder() = default;

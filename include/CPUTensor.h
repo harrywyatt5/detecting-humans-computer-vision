@@ -27,7 +27,10 @@ private:
 
     static T* createCPUMemory(size_t elementCount) {
         T* ptr;
-        cudaHostAlloc((void**)&ptr, elementCount * sizeof(T));
+        auto result = cudaMallocHost((void**)&ptr, elementCount * sizeof(T));
+        if (result != cudaSuccess) {
+            throw std::runtime_error(std::string("Could not allocate pinned host memory. Reason: ") + cudaGetErrorString(result));
+        }
         std::memset(ptr, 0, elementCount * sizeof(T));
         return ptr;
     }

@@ -3,6 +3,8 @@
 #include "CudaTensor.h"
 #include "GpuImage.h"
 #include "ImageProvider.h"
+#include "CudaDevicesSingleton.h"
+#include "CudaDevice.h"
 #include <sensor_msgs/msg/image.hpp>
 #include <memory>
 #include <vector>
@@ -15,12 +17,16 @@ class PersistentImageInput : public ImageProvider {
 private:
     std::shared_ptr<GpuImage> gpuImage;
     cv::cuda::GpuMat resizedImage;
+    uint8_t* pinnedStaticPtr;
+    std::shared_ptr<CudaDevice> cudaDevice;
     int x;
     int y;
     int resizedX;
     int resizedY;
 
     bool hasUploadedImage;
+    void copyToPinnedMemory(const uint8_t* source, int step);
+    void allocatePinnedMem();
 public:
     PersistentImageInput(int imageX, int imageY, int resizedX, int resizedY, int deviceId);
     void uploadImageFromDisk(const std::string& path);
@@ -31,4 +37,9 @@ public:
     std::shared_ptr<const GpuImage> getConstGpuImage() const;
     int getOriginalX() const override;
     int getOriginalY() const override;
+
+    ~PersistentImageInput();
+    PersistentImageInput(PersistentImageInput&& other) noexcept;
+    PersistentImageInput(const PersistentImageInput&) = delete;
+    PersistentImageInput& operator=(const PersistentImageInput&) = delete;
 };

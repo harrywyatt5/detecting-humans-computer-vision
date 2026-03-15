@@ -2,6 +2,7 @@
 
 #include "LanguageToken.h"
 #include "Sam3ContextBuilder.h"
+#include "CudaDevicesSingleton.h"
 #include "LoggingLevel.h"
 #include "PersistentSam3Model.h"
 #include "PersistentImageInputFactory.h"
@@ -75,6 +76,7 @@ HumanDetectionNode::HumanDetectionNode()
 }
 
 void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
+    auto cudaDeviceId = this->get_parameter("cuda_device_id").as_int();
     auto builder = Sam3ContextBuilder()
                     .withApplicationName("real_time_humans")
                     .withBatchLimit(1)
@@ -84,11 +86,13 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
                     .withVisionEncoderPath(this->get_parameter("sam3_vision_encoder_path").as_string())
                     .withDecoderPath(this->get_parameter("sam3_decoder_path").as_string())
                     .withFP16Enabled(true)
-                    .withDeviceId(this->get_parameter("cuda_device_id").as_int())
+                    .withDeviceId(cudaDeviceId)
                     .withEngineCacheDir(this->get_parameter("sam3_engine_cache_dir").as_string())
                     .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_ALL)
                     .withLoggingLevel(loggingLevel.toOrtLoggingLevel())
                     .withMaxGPUMemory(this->get_parameter("maximum_vram").as_int())
+                    //.withComputeStreamEnabled(true)
+                    //.withComputeStream(CudaDevicesSingleton::getInstance()->getForId(cudaDeviceId)->getCudaStream())
                     .withCudaGraphsEnabled(true);
     samContext = std::make_unique<Sam3Context>(builder.build());
     samModel = std::make_unique<PersistentSam3Model>(PersistentSam3Model::createSam3Model(*samContext));

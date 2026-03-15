@@ -25,7 +25,9 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
         "trt_max_workspace_size",
         "trt_engine_cache_enable",
         "trt_engine_cache_path",
-        "trt_cuda_graph_enable"
+        "trt_cuda_graph_enable",
+        "has_user_compute_stream",
+        "user_compute_stream"
     };
     tensorRTOptions = {
         "0",
@@ -33,6 +35,8 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
         "6442450944", // 6GB
         "1",
         "./trt_cache",
+        "0",
+        "0",
         "0"
     };
 }
@@ -106,6 +110,18 @@ Sam3ContextBuilder& Sam3ContextBuilder::withNumBoxesLimit(const int64_t count) {
 
 Sam3ContextBuilder& Sam3ContextBuilder::withCudaGraphsEnabled(const bool enabled) {
     tensorRTOptions[5] = enabled ? "1" : "0";
+    return *this;
+}
+
+Sam3ContextBuilder& Sam3ContextBuilder::withComputeStreamEnabled(const bool enabled) {
+    tensorRTOptions[6] = enabled ? "1" : "0";
+    return *this;
+}
+
+Sam3ContextBuilder& Sam3ContextBuilder::withComputeStream(cudaStream_t& computeStream) {
+    // Force enable the setting
+    withComputeStreamEnabled(true);
+    tensorRTOptions[7] = std::to_string(reinterpret_cast<size_t>(computeStream));
     return *this;
 }
 

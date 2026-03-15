@@ -2,7 +2,7 @@
 
 #include "CudaTensor.h"
 #include "NormaliseImageKernel.h"
-#include "CudaStreamSingleton.h";
+#include "CudaDevicesSingleton.h"
 #include <sensor_msgs/msg/image.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudaimgproc.hpp>
@@ -11,7 +11,9 @@
 #include <cuda_runtime.h>
 #include <stdexcept>
 #include <cstdint>
+#include <string>
 #include <optional>
+#include <iostream>
 #include <string>
 
 PersistentImageInput::PersistentImageInput(
@@ -20,13 +22,27 @@ PersistentImageInput::PersistentImageInput(
     int resizeX,
     int resizeY,
     int cudaDeviceId
-) : x(imageX), y(imageY), resizedX(resizeX), resizedY(resizeY), hasUploadedImage(false) {
-    cv::cuda::setDevice(cudaDeviceId);
+) : x(imageX), y(imageY), resizedX(resizeX), resizedY(resizeY), pinnedStaticPtr(nullptr), hasUploadedImage(false) {
+    cudaDevice = CudaDevicesSingleton::getInstance()->getForId(cudaDeviceId);
     gpuImage = std::make_shared<GpuImage>(cv::cuda::GpuMat(cv::Size(imageX, imageY), CV_8UC3), cudaDeviceId);
     resizedImage = cv::cuda::GpuMat(cv::Size(resizeX, resizeY), CV_8UC3);
+
+    allocatePinnedMem();
+}
+
+void PersistentImageInput::allocatePinnedMem() {
+    auto result = cudaMallocHost((void**)&pinnedStaticPtr, x * y * 3 * sizeof(uint8_t));
+
+    if (result != cudaSuccess) {
+        throw std::runtime_error(std::string("Failed to allocate pinned host memory. Reason: ") + cudaGetErrorString(result));
+    }
+
+    std::cout << "Pinned memory allocated at: " << (void*)pinnedStaticPtr 
+        << " size=" << (x * y * 3) << std::endl;
 }
 
 void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
+    // TODO: optimise this code so that it uses malloc'd data -> pinned static -> gpu
     auto img = cv::imread(path);
     if (img.empty()) {
         throw std::runtime_error("Failed to load image at " + path);
@@ -40,8 +56,16 @@ void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
     gpuImage->uploadCpuImage(convertedImg);
 
     // Resize on the gpu as it can be parallelised
-    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, *CudaStreamSingleton::getInstance()->getOpenCVStream());
+    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
     hasUploadedImage = true;
+}
+
+void PersistentImageInput::copyToPinnedMemory(const uint8_t* source, int step) {
+    for (int row = 0; row < y; ++row) {
+        const uint8_t* srcRowPtr = source + row * step;
+        uint8_t* destination = pinnedStaticPtr + row * (x * 3);
+        std::memcpy(destination, srcRowPtr, x * 3 * sizeof(uint8_t));
+    }
 }
 
 void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Image& image, const std::optional<cv::ColorConversionCodes> conversion) {
@@ -49,13 +73,18 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
     if (image.height != y || image.width != x) {
         throw std::runtime_error("Image does not match size allocated to this object!");
     }
+    std::cout << "copyToPinnedMemory: x=" << x << " y=" << y 
+              << " step=" << image.step 
+              << " allocated=" << (x * y * 3) 
+              << " needed=" << (image.height * image.step) << std::endl;
+    copyToPinnedMemory(image.data.data(), image.step);
     
     const cv::Mat cpuImage(
-        image.height,
-        image.width,
+        y,
+        x,
         CV_8UC3,
-        const_cast<uint8_t*>(image.data.data()),
-        image.step
+        pinnedStaticPtr,
+        x * 3
     );
 
     // If the colour format needs to be converted, it shouldn't do though!
@@ -63,13 +92,13 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
         // Super expensive, when we are looking at the incoming images we should definitely warn if this is
         // the case!
         cv::cuda::GpuMat temp;
-        temp.upload(cpuImage, *CudaStreamSingleton::getInstance()->getOpenCVStream());
-        cv::cuda::cvtColor(temp, gpuImage->getMutableGpuMat(), conversion.value(), 0, *CudaStreamSingleton::getInstance()->getOpenCVStream());
+        temp.upload(cpuImage, cudaDevice->getOpenCVCudaStream());
+        cv::cuda::cvtColor(temp, gpuImage->getMutableGpuMat(), conversion.value(), 0, cudaDevice->getOpenCVCudaStream());
     } else {
         gpuImage->uploadCpuImage(cpuImage);
     }
 
-    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, *CudaStreamSingleton::getInstance()->getOpenCVStream());
+    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
     hasUploadedImage = true;
 }
 
@@ -84,7 +113,7 @@ void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
     }
 
     tensor.setCudaDeviceToTensor();
-    launchNormaliseImage(resizedImage, *CudaStreamSingleton::getInstance()->getOpenCVStream(), tensor.getStartPtr());
+    launchNormaliseImage(resizedImage, cudaDevice->getOpenCVCudaStream(), tensor.getStartPtr());
 }
 
 std::shared_ptr<GpuImage> PersistentImageInput::getMutableGpuImage() {
@@ -101,4 +130,28 @@ int PersistentImageInput::getOriginalX() const {
 
 int PersistentImageInput::getOriginalY() const {
     return y;
+}
+
+PersistentImageInput::~PersistentImageInput() {
+    if (pinnedStaticPtr == nullptr) {
+        return;
+    }
+
+    auto result = cudaFreeHost((void*)pinnedStaticPtr);
+    if (result != cudaSuccess) {
+        std::cerr << "An error occurred when trying to free pinned memory. Reason: " << cudaGetErrorString(result) << std::endl;
+    }
+
+    pinnedStaticPtr = nullptr;
+}
+
+PersistentImageInput::PersistentImageInput(PersistentImageInput&& other) noexcept
+    : x(other.x), y(other.y), resizedX(other.resizedX), resizedY(other.resizedY),
+      gpuImage(std::move(other.gpuImage)),
+      resizedImage(std::move(other.resizedImage)),
+      cudaDevice(std::move(other.cudaDevice)),
+      pinnedStaticPtr(other.pinnedStaticPtr),
+      hasUploadedImage(other.hasUploadedImage)
+{
+    other.pinnedStaticPtr = nullptr;
 }
