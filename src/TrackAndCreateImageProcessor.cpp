@@ -1,4 +1,4 @@
-#include "CreateImageProcessor.h"
+#include "TrackAndCreateImageProcessor.h"
 
 #include "CreateImageKernel.h"
 #include "GpuImage.h"
@@ -8,6 +8,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
+#include <BYTETracker.h>
+#include <Object.h>
 #include <cuda_runtime.h>
 #include <stdexcept>
 #include <memory>
@@ -15,7 +17,7 @@
 #include <iostream>
 #include <string>
 
-CreateImageProcessor::CreateImageProcessor(
+TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(
     int x,
     int y,
     int iX,
@@ -23,16 +25,17 @@ CreateImageProcessor::CreateImageProcessor(
     int masks,
     float thres,
     int devId
-) : finalX(x), finalY(y), masksCount(masks), threshold(thres) {
+) : finalX(x), finalY(y), masksCount(masks), threshold(thres), tracker(nullptr) {
     cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
     cudaDevice->switchCudaDevice();
     outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
     intermediateMask = cv::cuda::GpuMat(cv::Size(iX, iY), CV_8UC1);
+    trackedObjects.reserve(200);
 
     allocateMemory();
 }
 
-void CreateImageProcessor::allocateMemory() {
+void TrackAndCreateImageProcessor::allocateMemory() {
     cudaDevice->switchCudaDevice();
     auto allocateError = cudaMalloc((void**)&maskInclusionPtr, masksCount * sizeof(uint8_t));
 
@@ -52,7 +55,7 @@ void CreateImageProcessor::allocateMemory() {
     }
 }
 
-void CreateImageProcessor::processOutput(
+void TrackAndCreateImageProcessor::processOutput(
     const CudaTensor<float>& outputMasksTensor,
     const CPUTensor<float>& outputBoxesTensor,
     const CPUTensor<float>& outputLogitsTensor,
@@ -101,7 +104,7 @@ void CreateImageProcessor::processOutput(
     syncAndCheckCuda();
 }
 
-void CreateImageProcessor::outputMaskedImage(GpuImage& base, const float mixPercentage) {
+void TrackAndCreateImageProcessor::outputMaskedImage(GpuImage& base, const float mixPercentage) {
     auto baseImage = base.getMutableGpuMat();
     if (mixPercentage < 0.0f || mixPercentage > 1.0f) {
         throw std::runtime_error("mixPercentage must be between 0.0f and 1.0f (inclusive)");
@@ -114,7 +117,7 @@ void CreateImageProcessor::outputMaskedImage(GpuImage& base, const float mixPerc
     launchCreateImage(outputMask, baseImage, cudaDevice->getOpenCVCudaStream(), mixPercentage);
 }
 
-CreateImageProcessor::~CreateImageProcessor() {
+TrackAndCreateImageProcessor::~TrackAndCreateImageProcessor() {
     if (maskInclusionPtr != nullptr) {
         auto error = cudaFree((void*)maskInclusionPtr);
 
@@ -141,16 +144,16 @@ CreateImageProcessor::~CreateImageProcessor() {
     }
 }
 
-void CreateImageProcessor::syncAndCheckCuda() {
+void TrackAndCreateImageProcessor::syncAndCheckCuda() {
     cudaDevice->waitForCompletion();
 
     auto error = cudaGetLastError();
     if (error != cudaSuccess) {
-        throw std::runtime_error(std::string("A CUDA error occurred when trying to process CreateImageProcessor. Reason: ") + cudaGetErrorString(error));
+        throw std::runtime_error(std::string("A CUDA error occurred when trying to process TrackAndCreateImageProcessor. Reason: ") + cudaGetErrorString(error));
     }
 }
 
-CreateImageProcessor CreateImageProcessor::createCreateImageProcessor(
+TrackAndCreateImageProcessor TrackAndCreateImageProcessor::createTrackAndCreateImageProcessor(
     int x,
     int y,
     int intermediateX,
@@ -159,7 +162,7 @@ CreateImageProcessor CreateImageProcessor::createCreateImageProcessor(
     float thres,
     const Sam3Context& context
 ) {
-    return CreateImageProcessor(
+    return TrackAndCreateImageProcessor(
         x,
         y,
         intermediateX,
@@ -170,7 +173,7 @@ CreateImageProcessor CreateImageProcessor::createCreateImageProcessor(
     );
 }
 
-CreateImageProcessor::CreateImageProcessor(CreateImageProcessor&& other) noexcept 
+TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(TrackAndCreateImageProcessor&& other) noexcept 
     : finalX(other.finalX), finalY(other.finalY), masksCount(other.masksCount),
         threshold(other.threshold), intermediateMask(std::move(other.intermediateMask)), outputMask(std::move(other.outputMask)),
         maskInclusionCpuPtr(other.maskInclusionCpuPtr), maskInclusionPtr(other.maskInclusionPtr), cudaDevice(other.cudaDevice) {

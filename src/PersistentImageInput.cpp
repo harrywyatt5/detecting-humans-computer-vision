@@ -36,9 +36,6 @@ void PersistentImageInput::allocatePinnedMem() {
     if (result != cudaSuccess) {
         throw std::runtime_error(std::string("Failed to allocate pinned host memory. Reason: ") + cudaGetErrorString(result));
     }
-
-    std::cout << "Pinned memory allocated at: " << (void*)pinnedStaticPtr 
-        << " size=" << (x * y * 3) << std::endl;
 }
 
 void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
@@ -73,10 +70,7 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
     if (image.height != y || image.width != x) {
         throw std::runtime_error("Image does not match size allocated to this object!");
     }
-    std::cout << "copyToPinnedMemory: x=" << x << " y=" << y 
-              << " step=" << image.step 
-              << " allocated=" << (x * y * 3) 
-              << " needed=" << (image.height * image.step) << std::endl;
+
     copyToPinnedMemory(image.data.data(), image.step);
     
     const cv::Mat cpuImage(

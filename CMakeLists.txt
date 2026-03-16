@@ -44,6 +44,8 @@ set(SOURCES
 	src/GpuImage.cpp
 	src/CudaDevice.cpp
 	src/CudaDevicesSingleton.cpp
+	src/TrackAndCreateImageProcessor.cpp
+	src/FrameSampler.cpp
 )
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -52,6 +54,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/
 find_package(OpenCV 4 REQUIRED HINTS "/opt/cudaopencv")
 find_package(CUDAToolkit REQUIRED)
 find_package(OnnxRuntime REQUIRED)
+find_package(ByteTrack REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -60,6 +63,7 @@ find_package(ament_index_cpp REQUIRED)
 # Link standard CMAKE libs
 target_link_libraries(${PROJECT_NAME}
 	${OpenCV_LIBS}
+	ByteTrack::ByteTrack
 	OnnxRuntime::OnnxRuntime
 	CUDA::cudart
 )

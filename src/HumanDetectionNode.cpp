@@ -91,9 +91,9 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
                     .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_ALL)
                     .withLoggingLevel(loggingLevel.toOrtLoggingLevel())
                     .withMaxGPUMemory(this->get_parameter("maximum_vram").as_int())
-                    //.withComputeStreamEnabled(true)
-                    //.withComputeStream(CudaDevicesSingleton::getInstance()->getForId(cudaDeviceId)->getCudaStream())
-                    .withCudaGraphsEnabled(true);
+                    .withComputeStreamEnabled(true)
+                    .withComputeStream(CudaDevicesSingleton::getInstance()->getForId(cudaDeviceId)->getCudaStream())
+                    .withCudaGraphsEnabled(false);
     samContext = std::make_unique<Sam3Context>(builder.build());
     samModel = std::make_unique<PersistentSam3Model>(PersistentSam3Model::createSam3Model(*samContext));
 }

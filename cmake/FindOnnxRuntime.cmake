@@ -45,4 +45,3 @@ if(OnnxRuntime_FOUND AND NOT TARGET OnnxRuntime::OnnxRuntime)
 endif()
 
 mark_as_advanced(OnnxRuntime_INCLUDE_DIR OnnxRuntime_LIBRARY)
-
