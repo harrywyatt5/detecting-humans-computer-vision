@@ -1,10 +1,11 @@
 #pragma once
 
 #include "PersistentSam3Model.h"
-#include "CreateImageProcessor.h"
+#include "TrackAndCreateImageProcessor.h"
 #include "Sam3Context.h"
 #include "LoggingLevel.h"
 #include "LanguageToken.h"
+#include "FrameSampler.h"
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <opencv2/opencv.hpp>
@@ -16,8 +17,9 @@ private:
     std::unique_ptr<PersistentSam3Model> samModel;
     std::unique_ptr<Sam3Context> samContext;
     std::shared_ptr<PersistentImageInput> imageInput;
-    std::shared_ptr<CreateImageProcessor> createImageProcessor;
+    std::shared_ptr<TrackAndCreateImageProcessor> trackCreateProcessor;
     std::shared_ptr<LanguageToken> promptToken;
+    std::shared_ptr<FrameSampler> frameSampler;
     std::optional<cv::ColorConversionCodes> inputConversion;
     // Any parameters which are needed in the main runtime loop, we cache here
     std::string imageFrameId; 

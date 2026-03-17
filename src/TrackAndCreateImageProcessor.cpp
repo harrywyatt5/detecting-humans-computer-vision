@@ -1,6 +1,7 @@
 #include "TrackAndCreateImageProcessor.h"
 
 #include "CreateImageKernel.h"
+#include "TrackKernel.h"
 #include "GpuImage.h"
 #include "Sam3Context.h"
 #include "CudaDevicesSingleton.h"
@@ -11,6 +12,7 @@
 #include <ByteTrack/BYTETracker.h>
 #include <ByteTrack/Object.h>
 #include <ByteTrack/STrack.h>
+#include <ByteTrack/Rect.h>
 #include <cuda_runtime.h>
 #include <stdexcept>
 #include <memory>
@@ -63,7 +65,7 @@ float TrackAndCreateImageProcessor::calculateScore(const CPUTensor<float>& logit
     const float* logicPtr = logicTensor.getConstStartPtr();
     const float* logitsPtr = logitsTensor.getConstStartPtr();
 
-    return (1.0f / (1.0f + std::exp(-logitsPtr[index]))) * (1.0f / (1.0f + std::exp(logicPtr[0])));
+    return (1.0f / (1.0f + std::exp(-logitsPtr[index]))) * (1.0f / (1.0f + std::exp(-logicPtr[0])));
 }
 
 std::vector<std::shared_ptr<byte_track::STrack>> TrackAndCreateImageProcessor::generateTrackedTracks(
@@ -71,12 +73,30 @@ std::vector<std::shared_ptr<byte_track::STrack>> TrackAndCreateImageProcessor::g
     const CPUTensor<float>& logitsTensor,
     const CPUTensor<float>& logicTensor
 ) {
+    // If this is first time, we have to generate a BYTETrack instance
+    if (tracker == nullptr) {
+        auto framerate = frameSampler->getFrameRate();
+        tracker = std::make_unique<byte_track::BYTETracker>(framerate, framerate, 0.5f, 0.6f, 0.8f);
+    }
+    const float* basePtr = boxesTensor.getConstStartPtr();
     trackedObjects.clear();
 
     // TODO: Also write in the coordinates to write text? I.e. DrawableTextPlan
     for (int i = 0; i < masksCount; ++i) {
-        
+        int baseIndex = i * 4;
+        // Even though bytetrack does thresholding, it's cheaper to do it here as well
+        float score = calculateScore(logitsTensor, logicTensor, i);
+
+        if (score >= threshold) {
+            byte_track::Tlbr<float> aabb;
+            aabb << basePtr[baseIndex], basePtr[baseIndex + 1], basePtr[baseIndex + 2], basePtr[baseIndex + 3];
+
+            byte_track::Rect<float> rect = byte_track::generate_rect_by_tlbr<float>(aabb);
+            trackedObjects.push_back(byte_track::Object(rect, i, score, i));
+        }
     }
+
+    return tracker->update(trackedObjects);
 }
 
 void TrackAndCreateImageProcessor::populateMappingArray(
@@ -90,7 +110,12 @@ void TrackAndCreateImageProcessor::populateMappingArray(
             if (tracks.empty()) {
                 target = i;
             } else {
-                for (int j = 0; j < tracks.size(); ++j) {
+                // Remap target, if we actually got tracks this frame (first couple we dont)
+                // This is, by textbook, kinda computationally inefficient and yields a time
+                // complexity of O(N * M). However, as we'll probably only have about 20 bounding
+                // boxes on screen at a time, a linear match through both rather using something more
+                // advanced, like a hash map, is more appropriate
+                for (size_t j = 0; j < tracks.size(); ++j) {
                     if (tracks[j]->getOriginalIndex() == i) {
                         target = tracks[j]->getTrackId();
                         break;
@@ -98,35 +123,15 @@ void TrackAndCreateImageProcessor::populateMappingArray(
                 }
             }
 
+            // There is a chance that we have tracks, but the byte track decided to discard it
             maskMappingsCpuPtr[i] = MappedMask(target != -1, target);
         } else {
-            maskMappingsCpuPtr[i] = MappedMask(false, i);
+            maskMappingsCpuPtr[i] = MappedMask(false, -1);
         }
     }
 }
 
-void TrackAndCreateImageProcessor::processOutput(
-    const CudaTensor<float>& outputMasksTensor,
-    const CPUTensor<float>& outputBoxesTensor,
-    const CPUTensor<float>& outputLogitsTensor,
-    const CPUTensor<float>& outputLogicTensor
-) {
-    // Sync the stream here so our CPUTensors have all our values
-    cudaDevice->waitForCompletion();
-
-    // Sanity check
-    if (outputLogitsTensor.getSize() != (size_t)masksCount) {
-        throw std::runtime_error("Mismatch between CreateImageProcessor config and numbers of logits in tensor");
-    }
-
-    // If we've already observed some frames, then we can start to track targets
-    if (frameSampler->getFrameCount() >= minimumFrameThreshold) {
-
-    }
-
-    populateMappingArray(outputBoxesTensor, outputLogitsTensor, outputLogicTensor);
-
-    // Copy our mappings array onto the gpu
+void TrackAndCreateImageProcessor::copyMappingArray() {
     auto error = cudaMemcpyAsync(
         (void*)maskMappingsGpuPtr,
         (void*)maskMappingsCpuPtr,
@@ -140,8 +145,35 @@ void TrackAndCreateImageProcessor::processOutput(
             + cudaGetErrorString(error)
         );
     }
+}
 
-    launchCreateMask(intermediateMask, cudaDevice->getOpenCVCudaStream(), outputMasksTensor.getConstStartPtr(), maskInclusionPtr, masksCount);
+void TrackAndCreateImageProcessor::processOutput(
+    const CudaTensor<float>& outputMasksTensor,
+    const CPUTensor<float>& outputBoxesTensor,
+    const CPUTensor<float>& outputLogitsTensor,
+    const CPUTensor<float>& outputLogicTensor
+) {
+    // Sync the stream here so our CPUTensors have all our values
+    cudaDevice->waitForCompletion();
+
+    // Sanity check
+    if (outputLogitsTensor.getSize() != (size_t)masksCount || outputBoxesTensor.getSize() != (size_t)masksCount * 4) {
+        throw std::runtime_error("Mismatch between CreateImageProcessor config and numbers of logits/boxes in tensor");
+    }
+
+    // If we've already observed some frames, then we can start to track targets
+    std::vector<std::shared_ptr<byte_track::STrack>> tracks;
+    if (frameSampler->getFrameCount() >= minimumFrameThreshold) {
+        tracks = generateTrackedTracks(outputBoxesTensor, outputLogitsTensor, outputLogicTensor);
+    }
+    std::cout << "Number of tracks: " << tracks.size() << std::endl;
+
+    populateMappingArray(outputLogitsTensor, outputLogicTensor, tracks);
+
+    // Copy our mappings array onto the gpu
+    copyMappingArray();
+
+    launchCreateTrackedMask(intermediateMask, cudaDevice->getOpenCVCudaStream(), outputMasksTensor.getConstStartPtr(), maskMappingsGpuPtr, masksCount);
     cv::cuda::resize(intermediateMask, outputMask, cv::Size(finalX, finalY), 0, 0, cv::INTER_NEAREST, cudaDevice->getOpenCVCudaStream());
     
     // Wait until all GPU actions have finished
@@ -162,8 +194,8 @@ void TrackAndCreateImageProcessor::outputMaskedImage(GpuImage& base, const float
 }
 
 TrackAndCreateImageProcessor::~TrackAndCreateImageProcessor() {
-    if (maskInclusionPtr != nullptr) {
-        auto error = cudaFree((void*)maskInclusionPtr);
+    if (maskMappingsGpuPtr != nullptr) {
+        auto error = cudaFree((void*)maskMappingsGpuPtr);
 
         if (error != cudaSuccess) {
             // We don't throw here because we could be unwinding anyway...
@@ -172,11 +204,11 @@ TrackAndCreateImageProcessor::~TrackAndCreateImageProcessor() {
                 << cudaGetErrorString(error)
                 << std::endl;
         }
-        maskInclusionPtr = nullptr;
+        maskMappingsGpuPtr = nullptr;
     }
 
-    if (maskInclusionCpuPtr != nullptr) {
-        auto error = cudaFreeHost((void*)maskInclusionCpuPtr);
+    if (maskMappingsCpuPtr != nullptr) {
+        auto error = cudaFreeHost((void*)maskMappingsCpuPtr);
 
         if (error != cudaSuccess) {
             std::cerr 
@@ -184,7 +216,7 @@ TrackAndCreateImageProcessor::~TrackAndCreateImageProcessor() {
                 << cudaGetErrorString(error)
                 << std::endl;
         }
-        maskInclusionCpuPtr = nullptr;
+        maskMappingsCpuPtr = nullptr;
     }
 }
 
@@ -200,7 +232,9 @@ void TrackAndCreateImageProcessor::syncAndCheckCuda() {
 TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(TrackAndCreateImageProcessor&& other) noexcept 
     : finalX(other.finalX), finalY(other.finalY), masksCount(other.masksCount),
         threshold(other.threshold), intermediateMask(std::move(other.intermediateMask)), outputMask(std::move(other.outputMask)),
-        maskInclusionCpuPtr(other.maskInclusionCpuPtr), maskInclusionPtr(other.maskInclusionPtr), cudaDevice(other.cudaDevice) {
-            other.maskInclusionCpuPtr = nullptr;
-            other.maskInclusionPtr = nullptr;
+        maskMappingsCpuPtr(other.maskMappingsCpuPtr), maskMappingsGpuPtr(other.maskMappingsGpuPtr), cudaDevice(other.cudaDevice),
+        tracker(std::move(other.tracker)), trackedObjects(std::move(other.trackedObjects)), minimumFrameThreshold(other.minimumFrameThreshold),
+        frameSampler(other.frameSampler) {
+            other.maskMappingsCpuPtr = nullptr;
+            other.maskMappingsGpuPtr = nullptr;
 }

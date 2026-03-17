@@ -4,9 +4,11 @@
 #include "Sam3ContextBuilder.h"
 #include "CudaDevicesSingleton.h"
 #include "LoggingLevel.h"
+#include "FrameSampler.h"
 #include "PersistentSam3Model.h"
 #include "PersistentImageInputFactory.h"
-#include "CreateImageProcessor.h"
+#include "TrackAndCreateImageProcessor.h"
+#include "TrackAndCreateImageProcessorBuilder.h"
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <onnxruntime_cxx_api.h>
@@ -15,6 +17,7 @@
 #include <sensor_msgs/image_encodings.hpp>
 #include <cstdlib>
 #include <cstdint>
+#include <memory>
 #include <chrono>
 #include <stdexcept>
 #include <string>
@@ -25,7 +28,8 @@ HumanDetectionNode::HumanDetectionNode()
         imageInput(nullptr),
         samContext(nullptr),
         promptToken(nullptr),
-        createImageProcessor(nullptr),
+        trackCreateProcessor(nullptr),
+        frameSampler(std::make_shared<FrameSampler>()),
         threshold(0.0f),
         isFullyConfigured(false),
         Node("human_detection_node")
@@ -116,7 +120,6 @@ void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::
 }
 
 void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
-    auto start = std::chrono::high_resolution_clock::now();
     if (!isFullyConfigured) {
         configureNodeFromInitialImage(*msg);
         RCLCPP_INFO(this->get_logger(), "Configured environment using initial frame correctly");
@@ -124,17 +127,17 @@ void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstS
         return;
     }
 
+    frameSampler->toggleFrame(true);
+
     // Mount the image. This is zero copy on the CPU (although has to be uploaded to GPU and resized)
     imageInput->uploadImageFromSensorMsg(*msg, inputConversion);
     samModel->detect(imageInput);
     samModel->processOutput();
 
-    createImageProcessor->outputMaskedImage(*imageInput->getMutableGpuImage(), threshold);
+    trackCreateProcessor->outputMaskedImage(*imageInput->getMutableGpuImage(), threshold);
 
     auto finalMsg = imageInput->getConstGpuImage()->createRos2ImageMessage(imageFrameId, this->get_clock()->now());
-    auto endTime = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - start).count();
-    RCLCPP_INFO(this->get_logger(), "Timing: %lims", duration);
+    frameSampler->toggleFrame(true);
     maskedImagePub->publish(std::move(finalMsg));
 }
 
@@ -143,17 +146,19 @@ void HumanDetectionNode::configureNodeFromInitialImage(const sensor_msgs::msg::I
     int imageWidth = (int)image.width;
 
     imageInput = std::make_shared<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 1008, 1008, *samContext));
-    createImageProcessor = std::make_unique<CreateImageProcessor>(CreateImageProcessor::createCreateImageProcessor(
-        imageWidth,
-        imageHeight,
-        288,
-        288,
-        200, 
-        this->get_parameter("threshold").as_double(),
-        *samContext
-    ));
+    auto builder = TrackAndCreateImageProcessorBuilder()
+                    .withDeviceIdFromContext(*samContext)
+                    .withFrameSampler(frameSampler)
+                    .withImageHeight(imageHeight)
+                    .withImageWidth(imageWidth)
+                    .withIntermediateHeight(288)
+                    .withIntermediateWidth(288)
+                    .withMasksCount(200)
+                    .withMinimumFramesToSample(5)
+                    .withThreshold(threshold);
+    trackCreateProcessor = std::make_unique<TrackAndCreateImageProcessor>(builder.build());
 
-    samModel->registerOutputProcessor(createImageProcessor);
+    samModel->registerOutputProcessor(trackCreateProcessor);
     configureCameraImageConversion(image);
 
     // SAM3 is now ready to start accepting frames

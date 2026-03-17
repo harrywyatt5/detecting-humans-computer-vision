@@ -20,13 +20,12 @@ void FrameSampler::toggleFrame(bool debugLog) {
     } else {
         auto currTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now().time_since_epoch()).count();
 
-        totalTime += currTime - startTime;
-        startTime = -1;
-        ++frameCount;
-
         if (debugLog) {
             std::cerr << "Frame time: " << (currTime - startTime) << "ms\n";
         }
+        totalTime += currTime - startTime;
+        startTime = -1;
+        ++frameCount;
     }
 }
 
