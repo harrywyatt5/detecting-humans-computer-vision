@@ -13,6 +13,6 @@ public:
     int64_t getFrameCount() const;
     bool isCurrentlyMidFrame() const;
     void toggleFrame(bool debugLog = false);
-    float getFrameRate() const;
+    int getFrameRate() const;
     int64_t getFrameTime() const; 
 };

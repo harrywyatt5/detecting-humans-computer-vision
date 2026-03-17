@@ -2,12 +2,14 @@
 
 #include "CudaDevicesSingleton.h"
 #include "CudaDevice.h"
+#include "FrameSampler.h"
 #include "OutputProcessor.h"
 #include "CPUTensor.h"
 #include "GpuImage.h"
 #include "Sam3Context.h"
-#include <BYTETracker.h>
-#include <Object.h>
+#include "MappedMask.h"
+#include <ByteTrack/BYTETracker.h>
+#include <ByteTrack/Object.h>
 #include <opencv2/opencv.hpp>
 #include <vector>
 #include <cstdint>
@@ -22,15 +24,28 @@ private:
     float threshold;
     cv::cuda::GpuMat intermediateMask;
     cv::cuda::GpuMat outputMask;
-    uint8_t* maskInclusionCpuPtr;
-    uint8_t* maskInclusionPtr;
+    MappedMask* maskMappingsGpuPtr;
+    MappedMask* maskMappingsCpuPtr;
     std::shared_ptr<CudaDevice> cudaDevice;
-    std::unique_ptr<BYTETracker> tracker;
-    std::vector<Object> trackedObjects;
-    int sampledFrameCounter;
+    std::unique_ptr<byte_track::BYTETracker> tracker;
+    std::vector<byte_track::Object> trackedObjects;
+    int minimumFrameThreshold;
+    std::shared_ptr<FrameSampler> frameSampler;
 
     void allocateMemory();
     void syncAndCheckCuda();
+    void copyMappingArray();
+    std::vector<std::shared_ptr<byte_track::STrack>> generateTrackedTracks(
+        const CPUTensor<float>& boxesTensor,
+        const CPUTensor<float>& logitsTensor,
+        const CPUTensor<float>& logicTensor
+    );
+    void populateMappingArray(
+        const CPUTensor<float>& logitsTensor,
+        const CPUTensor<float>& logicTensor,
+        const std::vector<std::shared_ptr<byte_track::STrack>>& tracks
+    );
+    float calculateScore(const CPUTensor<float>& logitsTensor, const CPUTensor<float>& logicTensor, int index) const;
 public:
     TrackAndCreateImageProcessor(
         int x,
@@ -39,6 +54,8 @@ public:
         int intermediateY,
         int masks,
         float thres,
+        int minimumFrames,
+        std::shared_ptr<FrameSampler> sampler,
         int devId
     );
     void processOutput(
@@ -53,14 +70,4 @@ public:
     TrackAndCreateImageProcessor(TrackAndCreateImageProcessor&& other) noexcept;
     TrackAndCreateImageProcessor(const TrackAndCreateImageProcessor&) = delete;
     TrackAndCreateImageProcessor& operator=(const TrackAndCreateImageProcessor&) = delete;
-
-    static TrackAndCreateImageProcessor createTrackAndCreateImageProcessor(
-        int x,
-        int y,
-        int intermediateX,
-        int intermediateY,
-        int masks,
-        float threshold,
-        const Sam3Context& context
-    );
 };

@@ -46,6 +46,7 @@ set(SOURCES
 	src/CudaDevicesSingleton.cpp
 	src/TrackAndCreateImageProcessor.cpp
 	src/FrameSampler.cpp
+	src/MappedMask.cpp
 )
 add_executable(${PROJECT_NAME} ${SOURCES})
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
@@ -55,6 +56,7 @@ find_package(OpenCV 4 REQUIRED HINTS "/opt/cudaopencv")
 find_package(CUDAToolkit REQUIRED)
 find_package(OnnxRuntime REQUIRED)
 find_package(ByteTrack REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -66,6 +68,7 @@ target_link_libraries(${PROJECT_NAME}
 	ByteTrack::ByteTrack
 	OnnxRuntime::OnnxRuntime
 	CUDA::cudart
+	Eigen3::Eigen
 )
 
 # Link special ROS2 libs

@@ -8,8 +8,9 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudaarithm.hpp>
-#include <BYTETracker.h>
-#include <Object.h>
+#include <ByteTrack/BYTETracker.h>
+#include <ByteTrack/Object.h>
+#include <ByteTrack/STrack.h>
 #include <cuda_runtime.h>
 #include <stdexcept>
 #include <memory>
@@ -20,16 +21,19 @@
 TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(
     int x,
     int y,
-    int iX,
-    int iY,
+    int intermediateX,
+    int intermediateY,
     int masks,
     float thres,
+    int minimumFrames,
+    std::shared_ptr<FrameSampler> sampler,
     int devId
-) : finalX(x), finalY(y), masksCount(masks), threshold(thres), tracker(nullptr) {
+) : finalX(x), finalY(y), masksCount(masks), threshold(thres),
+    tracker(nullptr), minimumFrameThreshold(minimumFrames), frameSampler(sampler) {
     cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
     cudaDevice->switchCudaDevice();
     outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
-    intermediateMask = cv::cuda::GpuMat(cv::Size(iX, iY), CV_8UC1);
+    intermediateMask = cv::cuda::GpuMat(cv::Size(intermediateX, intermediateY), CV_8UC1);
     trackedObjects.reserve(200);
 
     allocateMemory();
@@ -37,7 +41,7 @@ TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(
 
 void TrackAndCreateImageProcessor::allocateMemory() {
     cudaDevice->switchCudaDevice();
-    auto allocateError = cudaMalloc((void**)&maskInclusionPtr, masksCount * sizeof(uint8_t));
+    auto allocateError = cudaMalloc((void**)&maskMappingsGpuPtr, masksCount * sizeof(MappedMask));
 
     if (allocateError != cudaSuccess) {
         throw std::runtime_error(
@@ -46,12 +50,58 @@ void TrackAndCreateImageProcessor::allocateMemory() {
         );
     }
 
-    auto hostAllocateError = cudaHostAlloc((void**)&maskInclusionCpuPtr, masksCount * sizeof(uint8_t), cudaHostAllocDefault);
+    auto hostAllocateError = cudaHostAlloc((void**)&maskMappingsCpuPtr, masksCount * sizeof(MappedMask), cudaHostAllocDefault);
     if (hostAllocateError != cudaSuccess) {
         throw std::runtime_error(
             std::string("Failed to allocate pinned memory. Reason: ")
             + cudaGetErrorString(hostAllocateError)
         );
+    }
+}
+
+float TrackAndCreateImageProcessor::calculateScore(const CPUTensor<float>& logitsTensor, const CPUTensor<float>& logicTensor, int index) const {
+    const float* logicPtr = logicTensor.getConstStartPtr();
+    const float* logitsPtr = logitsTensor.getConstStartPtr();
+
+    return (1.0f / (1.0f + std::exp(-logitsPtr[index]))) * (1.0f / (1.0f + std::exp(logicPtr[0])));
+}
+
+std::vector<std::shared_ptr<byte_track::STrack>> TrackAndCreateImageProcessor::generateTrackedTracks(
+    const CPUTensor<float>& boxesTensor,
+    const CPUTensor<float>& logitsTensor,
+    const CPUTensor<float>& logicTensor
+) {
+    trackedObjects.clear();
+
+    // TODO: Also write in the coordinates to write text? I.e. DrawableTextPlan
+    for (int i = 0; i < masksCount; ++i) {
+        
+    }
+}
+
+void TrackAndCreateImageProcessor::populateMappingArray(
+    const CPUTensor<float>& logitsTensor,
+    const CPUTensor<float>& logicTensor,
+    const std::vector<std::shared_ptr<byte_track::STrack>>& tracks
+) {
+    for (int i = 0; i < masksCount; ++i) {
+        if (calculateScore(logitsTensor, logicTensor, i) >= threshold) {
+            int target = -1;
+            if (tracks.empty()) {
+                target = i;
+            } else {
+                for (int j = 0; j < tracks.size(); ++j) {
+                    if (tracks[j]->getOriginalIndex() == i) {
+                        target = tracks[j]->getTrackId();
+                        break;
+                    }
+                }
+            }
+
+            maskMappingsCpuPtr[i] = MappedMask(target != -1, target);
+        } else {
+            maskMappingsCpuPtr[i] = MappedMask(false, i);
+        }
     }
 }
 
@@ -69,24 +119,18 @@ void TrackAndCreateImageProcessor::processOutput(
         throw std::runtime_error("Mismatch between CreateImageProcessor config and numbers of logits in tensor");
     }
 
-    const float* logitsPtr = outputLogitsTensor.getConstStartPtr();
+    // If we've already observed some frames, then we can start to track targets
+    if (frameSampler->getFrameCount() >= minimumFrameThreshold) {
 
-    float presenceScore = 1.0f / (1.0f + std::exp(-outputLogicTensor.getConstStartPtr()[0]));
-
-    for (auto i = 0; i < masksCount; ++i) {
-        float score = (1.0f / (1.0f + std::exp(-logitsPtr[i]))) * presenceScore;
-        if (score >= threshold) {
-            maskInclusionCpuPtr[i] = 1;
-        } else {
-            maskInclusionCpuPtr[i] = 0;
-        }
     }
 
-    // Copy our inclusion array onto the gpu
+    populateMappingArray(outputBoxesTensor, outputLogitsTensor, outputLogicTensor);
+
+    // Copy our mappings array onto the gpu
     auto error = cudaMemcpyAsync(
-        (void*)maskInclusionPtr,
-        (void*)maskInclusionCpuPtr,
-        masksCount * sizeof(uint8_t),
+        (void*)maskMappingsGpuPtr,
+        (void*)maskMappingsCpuPtr,
+        masksCount * sizeof(MappedMask),
         cudaMemcpyHostToDevice,
         cudaDevice->getCudaStream()
     );
@@ -151,26 +195,6 @@ void TrackAndCreateImageProcessor::syncAndCheckCuda() {
     if (error != cudaSuccess) {
         throw std::runtime_error(std::string("A CUDA error occurred when trying to process TrackAndCreateImageProcessor. Reason: ") + cudaGetErrorString(error));
     }
-}
-
-TrackAndCreateImageProcessor TrackAndCreateImageProcessor::createTrackAndCreateImageProcessor(
-    int x,
-    int y,
-    int intermediateX,
-    int intermediateY,
-    int masks,
-    float thres,
-    const Sam3Context& context
-) {
-    return TrackAndCreateImageProcessor(
-        x,
-        y,
-        intermediateX,
-        intermediateY,
-        masks,
-        thres,
-        context.getDeviceId()
-    );
 }
 
 TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(TrackAndCreateImageProcessor&& other) noexcept 

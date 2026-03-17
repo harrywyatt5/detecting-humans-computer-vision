@@ -38,6 +38,6 @@ int64_t FrameSampler::getFrameTime() const {
     return totalTime / frameCount;
 }
 
-float FrameSampler::getFrameRate() const {
-    return (float)1000 / (float)getFrameTime();
+int FrameSampler::getFrameRate() const {
+    return 1000 / getFrameTime();
 }

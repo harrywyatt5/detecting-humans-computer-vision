@@ -2,16 +2,16 @@
 include(FindPackageHandleStandardArgs)
 
 find_path(ByteTrack_INCLUDE_DIR
-	NAMES BYTETracker.h
+	NAMES ByteTrack/BYTETracker.h
 	HINTS
         ${BYTETRACK_ROOT_DIR}/build
-		${BYTETRACK_ROOT_DIR}/include/ByteTrack
+		${BYTETRACK_ROOT_DIR}/include
         $ENV{BYTETRACK_ROOT_DIR}/build
-		$ENV{BYTETRACK_ROOT_DIR}/include/ByteTrack
+		$ENV{BYTETRACK_ROOT_DIR}/include
 	PATHS
-		/opt/ByteTrack-cpp/include/ByteTrack
-        /usr/local/ByteTrack-cpp/include/ByteTrack
-        "$ENV{HOME}/ByteTrack-cpp/include/ByteTrack"
+		/opt/ByteTrack-cpp/include
+        /usr/local/ByteTrack-cpp/include
+        "$ENV{HOME}/ByteTrack-cpp/include"
 		/usr/include
 		/usr/local/include
 )
