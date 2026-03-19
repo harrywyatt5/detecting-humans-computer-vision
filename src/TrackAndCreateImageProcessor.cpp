@@ -166,7 +166,6 @@ void TrackAndCreateImageProcessor::processOutput(
     if (frameSampler->getFrameCount() >= minimumFrameThreshold) {
         tracks = generateTrackedTracks(outputBoxesTensor, outputLogitsTensor, outputLogicTensor);
     }
-    std::cout << "Number of tracks: " << tracks.size() << std::endl;
 
     populateMappingArray(outputLogitsTensor, outputLogicTensor, tracks);
 

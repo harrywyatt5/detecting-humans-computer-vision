@@ -154,7 +154,7 @@ void HumanDetectionNode::configureNodeFromInitialImage(const sensor_msgs::msg::I
                     .withIntermediateHeight(288)
                     .withIntermediateWidth(288)
                     .withMasksCount(200)
-                    .withMinimumFramesToSample(5)
+                    .withMinimumFramesToSample(10)
                     .withThreshold(threshold);
     trackCreateProcessor = std::make_unique<TrackAndCreateImageProcessor>(builder.build());
 
