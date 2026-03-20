@@ -31,6 +31,9 @@ private:
     std::vector<byte_track::Object> trackedObjects;
     int minimumFrameThreshold;
     std::shared_ptr<FrameSampler> frameSampler;
+    int insertableNumXSize;
+    int insertableNumYSize;
+    std::vector<cv::cuda::GpuMat> insertableNums;
 
     void allocateMemory();
     void syncAndCheckCuda();
@@ -46,6 +49,7 @@ private:
         const std::vector<std::shared_ptr<byte_track::STrack>>& tracks
     );
     float calculateScore(const CPUTensor<float>& logitsTensor, const CPUTensor<float>& logicTensor, int index) const;
+    void generateInsertableNumbers(int count);
 public:
     TrackAndCreateImageProcessor(
         int x,

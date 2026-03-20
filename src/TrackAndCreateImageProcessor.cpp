@@ -228,6 +228,18 @@ void TrackAndCreateImageProcessor::syncAndCheckCuda() {
     }
 }
 
+void TrackAndCreateImageProcessor::generateInsertableNumbers(int count) {
+    // TODO: make these parameters? 
+    int fontFace = cv::FONT_HERSHEY_SIMPLEX;
+    int thickness = 3;
+    double baseSize = 2;
+
+    for (int i = 0; i < count; ++i) {
+        cv::Mat newNumber();
+
+    }
+}
+
 TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(TrackAndCreateImageProcessor&& other) noexcept 
     : finalX(other.finalX), finalY(other.finalY), masksCount(other.masksCount),
         threshold(other.threshold), intermediateMask(std::move(other.intermediateMask)), outputMask(std::move(other.outputMask)),
