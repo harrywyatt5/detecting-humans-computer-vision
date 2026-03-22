@@ -2,13 +2,15 @@
 
 #include "TextConfig.h"
 #include <vector>
+#include <stdexcept>
+#include <memory>
 #include <opencv2/opencv.hpp>
 
-TextProviderImpl::TextProviderImpl(int count, int devId, int x, int y, const TextConfig& config) 
+TextProviderImpl::TextProviderImpl(int countExclusive, int devId, int x, int y, const TextConfig& config) 
     : frameX(x), frameY(y), deviceId(devId), textConfig(config)
 {
     cv::cuda::setDevice(deviceId);
-    createNumberTemplates(count);
+    createNumberTemplates(countExclusive);
 }
 
 void TextProviderImpl::createNumberTemplates(int count) {
@@ -34,9 +36,30 @@ void TextProviderImpl::createNumberTemplates(int count) {
             textConfig.getThickness()
         );
 
-        cv::cuda::GpuMat newImageOnGpu;
+        auto newImageOnGpu = std::make_shared<cv::cuda::GpuMat>();
         // We block here rather than getting the CudaDevicesSingleton GPU stream.
         // If we didn't, the CPU would leave the loop and newImage would be freed :(
-        newImageOnGpu.upload(newImage);
+        newImageOnGpu->upload(newImage);
+        numbers.push_back(newImageOnGpu);
     }
+}
+
+std::shared_ptr<const cv::cuda::GpuMat> TextProviderImpl::getTextForNumber(int number) const {
+    if (number < 0 || number > numbers.size()) {
+        throw std::runtime_error("Invalid number to receive template for");
+    }
+
+    return numbers[number];
+}
+
+int TextProviderImpl::getFrameX() const {
+    return frameX;
+}
+
+int TextProviderImpl::getFrameY() const {
+    return frameY;
+}
+
+int TextProviderImpl::getDeviceId() const {
+    return deviceId;
 }

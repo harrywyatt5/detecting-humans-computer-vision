@@ -4,6 +4,7 @@
 #include "TextProvider.h"
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include <memory>
 
 class TextProviderImpl : public TextProvider {
 private:
@@ -11,12 +12,11 @@ private:
     int frameY;
     int deviceId;
     TextConfig textConfig;
-    std::vector<cv::cuda::GpuMat> numbers;
+    std::vector<std::shared_ptr<cv::cuda::GpuMat>> numbers;
     void createNumberTemplates(int count);
 public:
-    TextProviderImpl(int count, int devId, int frameX, int frameY, const TextConfig& config);
-    const std::vector<cv::cuda::GpuMat> getTemplateNumberList() const;
-    const cv::cuda::GpuMat& getTemplateNumber() const;
+    TextProviderImpl(int countExclusive, int devId, int frameX, int frameY, const TextConfig& config);
+    std::shared_ptr<const cv::cuda::GpuMat> getTextForNumber(int number) const override;
     int getFrameX() const;
     int getFrameY() const;
     int getDeviceId() const;
