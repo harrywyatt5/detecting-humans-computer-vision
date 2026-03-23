@@ -9,7 +9,7 @@
 struct GPUTextTemplateBlueprint {
     int topLeftX;
     int topLeftY;
-    const cv::cuda::PtrStepSz<uchar4> textTemplate;
+    cv::cuda::PtrStepSz<const uchar4> textTemplate;
 };
 
 class TextTemplateBlueprint {
@@ -18,6 +18,7 @@ private:
     int topLeftYCoord;
     std::shared_ptr<const cv::cuda::GpuMat> textTemplate; 
 public:
+    TextTemplateBlueprint() : topLeftXCoord(0), topLeftYCoord(0), textTemplate(nullptr) {}
     TextTemplateBlueprint(int x, int y, std::shared_ptr<const cv::cuda::GpuMat> templateText) : topLeftXCoord(x), topLeftYCoord(y), textTemplate(templateText) {}
 
     int getTopLeftXCoord() const;

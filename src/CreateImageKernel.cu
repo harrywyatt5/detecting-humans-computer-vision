@@ -1,3 +1,4 @@
+#include "TextTemplateBlueprint.h"
 #include <opencv2/core/cuda.hpp>
 #include <opencv2/core/cuda_stream_accessor.hpp>
 #include <cstdint>
@@ -69,6 +70,69 @@ __global__ void createImage(
     );
 }
 
+__global__ void createImageWithText(
+    const cv::cuda::PtrStepSz<ushort> mask,
+    cv::cuda::PtrStepSz<uchar3> image,
+    const GPUTextTemplateBlueprint* templates,
+    const int templateCount,
+    const int mixPercentage,
+    const int invMixPercentage
+) {
+    // Each thread is in charge of a pixel across all of the masks
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x >= mask.cols || y >= mask.rows) {
+        return;
+    }
+    
+    // We look through and see if this pixel belongs to a text
+    // template
+    for (int i = 0; i < templateCount; ++i) {
+        const GPUTextTemplateBlueprint currBlueprint = templates[i];
+        int localX = x - currBlueprint.topLeftX;
+        int localY = y - currBlueprint.topLeftY;
+
+        // Skip if this template isn't actually in bounds for our current
+        // pixel or doesn't have any content
+        uchar4 templateColour;
+        if (
+            localX < 0 
+            || localX >= currBlueprint.textTemplate.cols 
+            || localY < 0
+            || localY >= currBlueprint.textTemplate.rows
+            || (templateColour = currBlueprint.textTemplate(localY, localX)).w == 0
+        ) {
+            continue;
+        }
+
+        image(y, x) = make_uchar3(templateColour.x, templateColour.y, templateColour.z);
+        // Prioritise the top most template when drawing
+        // -- ignore potental mask pixels
+        return;
+    }
+
+    int maskValue = mask(y, x);
+    if (maskValue == 0) {
+        return;
+    }
+    
+    // As we are using a short for our mask and a char here, there's a chance that an overflow
+    // will cause a colour clash. However, we don't really care
+    uchar3 mixColour = make_uchar3(
+        (unsigned char)(maskValue * 137),
+        (unsigned char)(maskValue * 83),
+        (unsigned char)(maskValue * 211)
+    );
+    uchar3 currentPixelColour = image(y, x);
+    // >> 8 is same as dividing through by 256, but faster
+    image(y, x) = make_uchar3(
+        (unsigned char)((invMixPercentage * currentPixelColour.x + mixPercentage * mixColour.x) >> 8),
+        (unsigned char)((invMixPercentage * currentPixelColour.y + mixPercentage * mixColour.y) >> 8),
+        (unsigned char)((invMixPercentage * currentPixelColour.z + mixPercentage * mixColour.z) >> 8)
+    );
+}
+
 void launchCreateMask(
     cv::cuda::GpuMat& maskOutput,
     cv::cuda::Stream& stream,
@@ -96,4 +160,28 @@ void launchCreateImage(
     int intMix = (int)std::round(mixPercentage * 256.0f);
     int invIntMix = 256 - intMix;
     createImage<<<grid, blocks, 0, cudaStream>>>(maskInput, outputImage, intMix, invIntMix);
+}
+
+void launchCreateImageWithText(
+    const cv::cuda::GpuMat& maskInput,
+    cv::cuda::GpuMat& outputImage,
+    const GPUTextTemplateBlueprint* textTemplates,
+    const int templatesCount,
+    cv::cuda::Stream& stream,
+    const float mixPercentage
+) {
+    dim3 blocks(16, 16);
+    dim3 grid((maskInput.cols + blocks.x - 1) / blocks.x, (maskInput.rows + blocks.y - 1) / blocks.y);
+
+    cudaStream_t cudaStream = cv::cuda::StreamAccessor::getStream(stream);
+    int intMix = (int)std::round(mixPercentage * 256.0f);
+    int invIntMix = 256 - intMix;
+    createImageWithText<<<grid, blocks, 0, cudaStream>>>(
+        maskInput,
+        outputImage,
+        textTemplates,
+        templatesCount,
+        intMix,
+        invIntMix
+    );
 }

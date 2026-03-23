@@ -67,7 +67,7 @@ void PersistentImageInput::copyToPinnedMemory(const uint8_t* source, int step) {
 
 void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Image& image, const std::optional<cv::ColorConversionCodes> conversion) {
     // Ensure the message has the same size as we're expecting
-    if (image.height != y || image.width != x) {
+    if (image.height != (unsigned int)y || image.width != (unsigned int)x) {
         throw std::runtime_error("Image does not match size allocated to this object!");
     }
 

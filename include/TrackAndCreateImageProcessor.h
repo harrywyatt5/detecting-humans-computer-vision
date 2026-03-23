@@ -28,9 +28,9 @@ private:
     cv::cuda::GpuMat outputMask;
     MappedMask* maskMappingsGpuPtr;
     MappedMask* maskMappingsCpuPtr;
-    TextTemplateBlueprint* textTemplateCpuPtr;
+    GPUTextTemplateBlueprint* textTemplateCpuPtr;
     GPUTextTemplateBlueprint* textTemplateGpuPtr;
-    int templateCount;
+    std::vector<TextTemplateBlueprint> textTemplates;
     std::shared_ptr<CudaDevice> cudaDevice;
     std::unique_ptr<byte_track::BYTETracker> tracker;
     std::vector<byte_track::Object> trackedObjects;

@@ -4,7 +4,7 @@
 #include <cstdint>
 
 __global__ void createTrackedMask(
-    cv::cuda::PtrStepSz<unsigned char> mask,
+    cv::cuda::PtrStepSz<ushort> mask,
     const float* masksStart,
     const MappedMask* mappedMaskStart,
     const int masksCount
@@ -29,8 +29,7 @@ __global__ void createTrackedMask(
         int index = (i * mask.cols * mask.rows) + mask.cols * offsetY + offsetX;
         if (masksStart[index] > 0.0f) {
             // Record which detection it was so we can make a nice color image
-            // 0 is a non-detection so we must bump to +1. No worries - we only ever
-            // expect 200
+            // 0 is a non-detection so we must bump to +1.
             mask(offsetY, offsetX) = mappedMaskStart[i].getRemappedTarget() + 1;
             break;
         }

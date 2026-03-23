@@ -146,16 +146,17 @@ void HumanDetectionNode::configureNodeFromInitialImage(const sensor_msgs::msg::I
     int imageWidth = (int)image.width;
 
     imageInput = std::make_shared<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 1008, 1008, *samContext));
-    auto builder = TrackAndCreateImageProcessorBuilder()
-                    .withDeviceIdFromContext(*samContext)
-                    .withFrameSampler(frameSampler)
-                    .withImageHeight(imageHeight)
-                    .withImageWidth(imageWidth)
-                    .withIntermediateHeight(288)
-                    .withIntermediateWidth(288)
-                    .withMasksCount(200)
-                    .withMinimumFramesToSample(10)
-                    .withThreshold(threshold);
+    auto builder = TrackAndCreateImageProcessorBuilder();
+    builder
+        .withDeviceIdFromContext(*samContext)
+        .withFrameSampler(frameSampler)
+        .withImageHeight(imageHeight)
+        .withImageWidth(imageWidth)
+        .withIntermediateHeight(288)
+        .withIntermediateWidth(288)
+        .withMasksCount(200)
+        .withMinimumFramesToSample(10)
+        .withThreshold(threshold);
     trackCreateProcessor = std::make_unique<TrackAndCreateImageProcessor>(builder.build());
 
     samModel->registerOutputProcessor(trackCreateProcessor);

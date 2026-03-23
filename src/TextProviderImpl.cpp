@@ -4,6 +4,7 @@
 #include <vector>
 #include <stdexcept>
 #include <memory>
+#include <cstdint>
 #include <opencv2/opencv.hpp>
 
 TextProviderImpl::TextProviderImpl(int countExclusive, int devId, int x, int y, const TextConfig& config) 
@@ -23,13 +24,13 @@ void TextProviderImpl::createNumberTemplates(int count) {
         cv::Size textSize = cv::getTextSize(text, textConfig.getFontFace(), 1.0, textConfig.getThickness(), &baseLine);
 
         // Find the side we gotta divide by the most on and use that to scale our text
-        double textScale = 1.0 / std::max((double)frameY / (double)textSize.height, (double)frameX / (double)textSize.width);
+        double textScale = std::min((double)frameY / (double)textSize.height, (double)frameX / (double)textSize.width);
 
         cv::Mat newImage(frameY, frameX, CV_8UC4, cv::Scalar(0, 0, 0, 0));
         cv::putText(
             newImage,
             text,
-            cv::Point(0, 0),
+            cv::Point(0, frameY),
             textConfig.getFontFace(),
             textScale,
             textConfig.getColour(),
@@ -45,7 +46,7 @@ void TextProviderImpl::createNumberTemplates(int count) {
 }
 
 std::shared_ptr<const cv::cuda::GpuMat> TextProviderImpl::getTextForNumber(int number) const {
-    if (number < 0 || number > numbers.size()) {
+    if (number < 0 || (unsigned int)number > numbers.size()) {
         throw std::runtime_error("Invalid number to receive template for");
     }
 
@@ -53,7 +54,7 @@ std::shared_ptr<const cv::cuda::GpuMat> TextProviderImpl::getTextForNumber(int n
 }
 
 bool TextProviderImpl::hasTextForNumber(int number) const {
-    return number >= 0 && number < numbers.size(); 
+    return number >= 0 && (unsigned int)number < numbers.size(); 
 }
 
 int TextProviderImpl::getFrameX() const {

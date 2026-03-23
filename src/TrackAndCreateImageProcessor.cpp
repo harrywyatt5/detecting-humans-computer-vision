@@ -32,12 +32,13 @@ TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(
     std::unique_ptr<TextProvider> provider,
     int devId
 ) : finalX(x), finalY(y), masksCount(masks), threshold(thres), tracker(nullptr), minimumFrameThreshold(minimumFrames),
-    templateCount(0), frameSampler(sampler), textProvider(std::move(provider)) {
+    frameSampler(sampler), textProvider(std::move(provider)) {
     cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
     cudaDevice->switchCudaDevice();
-    outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
-    intermediateMask = cv::cuda::GpuMat(cv::Size(intermediateX, intermediateY), CV_8UC1);
-    trackedObjects.reserve(200);
+    outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_16UC1);
+    intermediateMask = cv::cuda::GpuMat(cv::Size(intermediateX, intermediateY), CV_16UC1);
+    textTemplates.reserve(masksCount);
+    trackedObjects.reserve(masksCount);
 
     allocateMemory();
 }
@@ -147,6 +148,8 @@ void TrackAndCreateImageProcessor::populateMappingArray(
             // There is a chance that we have tracks, but the byte track decided to discard it
             maskMappingsCpuPtr[i] = MappedMask(target != -1, target);
         } else {
+            // Having -1 in this value will cause the value to wrap to 65,535 but we don't
+            // care as we will ignore it
             maskMappingsCpuPtr[i] = MappedMask(false, -1);
         }
     }
@@ -168,21 +171,56 @@ void TrackAndCreateImageProcessor::copyMappingArray() {
     }
 }
 
-// TODO: gut this entirely... blueprint will lose context immediately so this code doesn't work
-// For highest performance at runtime, consider std::vector or stack allocated blueprints, convert
-// them to pinned GPU blueprints and then copy them across to the GPU as one batch
 void TrackAndCreateImageProcessor::copyTextTemplates() {
-    for (int i = 0; i < templateCount; ++i) {
-        GPUTextTemplateBlueprint blueprint = static_cast<GPUTextTemplateBlueprint>(textTemplateCpuPtr[i]);
-        cudaMemcpyAsync(
-            (void*)(textTemplateGpuPtr + i),
-            (void*)&blueprint,
-            sizeof(GPUTextTemplateBlueprint),
-            cudaMemcpyHostToDevice,
-            cudaDevice->getCudaStream()
+    // Check we have enough space
+    if (textTemplates.size() > (unsigned int)masksCount) {
+        throw std::runtime_error("Too many templates provided for template buffer");
+    }
+
+    // Copy them into our pinned memory, which is easier for the GPU to access
+    for (unsigned int i = 0; i < textTemplates.size(); ++i) {
+        textTemplateCpuPtr[i] = static_cast<GPUTextTemplateBlueprint>(textTemplates[i]);
+    }
+
+    auto error = cudaMemcpyAsync(
+        (void*)textTemplateGpuPtr,
+        (void*)textTemplateCpuPtr,
+        // We only copy the count, even though we allocate masksCount instances
+        // which likely leaves us with uninitialised memory. This is why it is so important
+        // to also pass 'count' to our kernel
+        textTemplates.size() * sizeof(GPUTextTemplateBlueprint),
+        cudaMemcpyHostToDevice,
+        cudaDevice->getCudaStream()
+    );
+    if (error != cudaSuccess) {
+        throw std::runtime_error(
+            std::string("Failed to copy text template data to CUDA device. Reason: ")
+            + cudaGetErrorString(error)
         );
     }
 }
+
+void TrackAndCreateImageProcessor::populateTextTemplates(const std::vector<std::shared_ptr<byte_track::STrack>>& tracks) {
+    for (unsigned int i = 0; i < tracks.size(); ++i) {
+        int trackId = tracks[i]->getTrackId();
+
+        if (textProvider->hasTextForNumber(trackId)) {
+            std::cout << "Rect here " << std::to_string(tracks[i]->getRect().tl_x()) << " and " << std::to_string(tracks[i]->getRect().tl_y()) << "\n";
+            textTemplates.push_back(TextTemplateBlueprint::createBlueprintFromRect(
+                trackId,
+                tracks[i]->getRect(),
+                intermediateMask.cols,
+                intermediateMask.rows,
+                finalX,
+                finalY,
+                textProvider.get()
+            ));
+        } else {
+            // TODO: expand how many tracks we are storing. Not implemented currently so just ignore and log
+            std::cerr << "No text for the number " << std::to_string(trackId) << ". Will be ignored\n";
+        }
+    }
+} 
 
 void TrackAndCreateImageProcessor::processOutput(
     const CudaTensor<float>& outputMasksTensor,
@@ -212,8 +250,12 @@ void TrackAndCreateImageProcessor::processOutput(
     launchCreateTrackedMask(intermediateMask, cudaDevice->getOpenCVCudaStream(), outputMasksTensor.getConstStartPtr(), maskMappingsGpuPtr, masksCount);
     cv::cuda::resize(intermediateMask, outputMask, cv::Size(finalX, finalY), 0, 0, cv::INTER_NEAREST, cudaDevice->getOpenCVCudaStream());
     
-    // Wait until all GPU actions have finished
-    syncAndCheckCuda();
+    textTemplates.clear();
+    populateTextTemplates(tracks);
+    // If it turns out we are going to draw text templates on the image
+    if (textTemplates.size() > 0) {
+        copyTextTemplates();
+    }
 }
 
 void TrackAndCreateImageProcessor::outputMaskedImage(GpuImage& base, const float mixPercentage) {
@@ -226,7 +268,18 @@ void TrackAndCreateImageProcessor::outputMaskedImage(GpuImage& base, const float
         throw std::runtime_error("Provided image must be the same dimensions as mask");
     }
 
-    launchCreateImage(outputMask, baseImage, cudaDevice->getOpenCVCudaStream(), mixPercentage);
+    std::cout << "Will draw " << std::to_string(textTemplates.size()) << "\n";
+    launchCreateImageWithText(
+        outputMask,
+        baseImage,
+        textTemplateGpuPtr,
+        textTemplates.size(),
+        cudaDevice->getOpenCVCudaStream(),
+        mixPercentage
+    );
+
+    // Wait for all gpu actions to finish
+    syncAndCheckCuda();
 }
 
 TrackAndCreateImageProcessor::~TrackAndCreateImageProcessor() {
@@ -272,7 +325,7 @@ TrackAndCreateImageProcessor::~TrackAndCreateImageProcessor() {
 
         if (error != cudaSuccess) {
             std::cerr 
-                << "Could not free pinned host memory. This application may be leaking memory. Reason: " 
+                << "Could not free CUDA memory. This application may be leaking memory. Reason: " 
                 << cudaGetErrorString(error)
                 << std::endl;
         }
@@ -292,7 +345,7 @@ void TrackAndCreateImageProcessor::syncAndCheckCuda() {
 TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(TrackAndCreateImageProcessor&& other) noexcept 
     : finalX(other.finalX), finalY(other.finalY), masksCount(other.masksCount),
         threshold(other.threshold), intermediateMask(std::move(other.intermediateMask)), outputMask(std::move(other.outputMask)),
-        maskMappingsCpuPtr(other.maskMappingsCpuPtr), maskMappingsGpuPtr(other.maskMappingsGpuPtr), textTemplateCpuPtr(other.textTemplateCpuPtr), templateCount(other.templateCount),
+        maskMappingsCpuPtr(other.maskMappingsCpuPtr), maskMappingsGpuPtr(other.maskMappingsGpuPtr), textTemplateCpuPtr(other.textTemplateCpuPtr),
         textTemplateGpuPtr(other.textTemplateGpuPtr), cudaDevice(other.cudaDevice), tracker(std::move(other.tracker)),
         trackedObjects(std::move(other.trackedObjects)), minimumFrameThreshold(other.minimumFrameThreshold), frameSampler(other.frameSampler),
         textProvider(std::move(other.textProvider)) {

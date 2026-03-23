@@ -1,4 +1,6 @@
 #pragma once
+
+#include "TextTemplateBlueprint.h"
 #include <opencv2/core/cuda.hpp>
 
 void launchCreateImage(
@@ -14,4 +16,13 @@ void launchCreateMask(
     const float* masksStart,
     const uint8_t* masksInclude,
     const int masks
+);
+
+void launchCreateImageWithText(
+    const cv::cuda::GpuMat& maskInput,
+    cv::cuda::GpuMat& outputImage,
+    const GPUTextTemplateBlueprint* textTemplates,
+    const int templatesCount,
+    cv::cuda::Stream& stream,
+    const float mixPercentage
 );

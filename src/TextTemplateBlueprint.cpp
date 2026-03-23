@@ -27,18 +27,15 @@ TextTemplateBlueprint TextTemplateBlueprint::createBlueprintFromRect(
     int finalHeight,
     const TextProvider* textProvider
 ) {
-    float xScale = (float)finalWidth / (float)intermediateWidth;
-    float yScale = (float)finalHeight / (float)intermediateHeight;
-
     auto textTemplate = textProvider->getTextForNumber(id);
 
-    int x = (rect.tl_x() * xScale) - (float)textTemplate->cols;
-    int y = (rect.tl_y() * yScale) - (float)textTemplate->rows;
+    int x = (rect.tl_x() * finalWidth) - (float)textTemplate->cols;
+    int y = (rect.tl_y() * finalHeight) - (float)textTemplate->rows;
 
     // If we're out of bounds, try appending the template to the end of the bounding box
     if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) {
-        x = rect.br_x() * xScale;
-        y = rect.br_y() * yScale;
+        x = rect.br_x() * finalWidth;
+        y = rect.br_y() * finalHeight;
 
         if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) std::cerr << "Label for bounding box might be out of bounds\n";
     }

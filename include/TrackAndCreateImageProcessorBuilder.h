@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FrameSampler.h"
+#include "TextProvider.h"
 #include "Sam3Context.h"
 #include "TrackAndCreateImageProcessor.h"
 #include <memory>
@@ -15,6 +16,7 @@ private:
     float threshold;
     int minimumFrames;
     std::shared_ptr<FrameSampler> sampler;
+    std::unique_ptr<TextProvider> textProvider;
     int devId;
 public:
     TrackAndCreateImageProcessorBuilder();
@@ -26,8 +28,9 @@ public:
     TrackAndCreateImageProcessorBuilder& withMasksCount(const int count);
     TrackAndCreateImageProcessorBuilder& withThreshold(const float thres);
     TrackAndCreateImageProcessorBuilder& withMinimumFramesToSample(const int count);
+    TrackAndCreateImageProcessorBuilder& withTextProvider(std::unique_ptr<TextProvider> provider);
     TrackAndCreateImageProcessorBuilder& withFrameSampler(std::shared_ptr<FrameSampler> frameSampler);
     TrackAndCreateImageProcessorBuilder& withDeviceId(const int id);
     TrackAndCreateImageProcessorBuilder& withDeviceIdFromContext(const Sam3Context& context);
-    TrackAndCreateImageProcessor build() const;
+    TrackAndCreateImageProcessor build();
 };

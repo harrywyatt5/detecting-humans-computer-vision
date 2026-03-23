@@ -11,18 +11,18 @@
 class MappedMask {
 private:
     bool present;
-    uint8_t remappedTarget;
+    uint16_t remappedTarget;
 public:
     CUDA_HOST_DEV MappedMask() : present(false), remappedTarget(0) {}
-    CUDA_HOST_DEV MappedMask(bool isPresent, uint8_t target) : present(isPresent), remappedTarget(target) {}
+    CUDA_HOST_DEV MappedMask(bool isPresent, uint16_t target) : present(isPresent), remappedTarget(target) {}
 
     CUDA_HOST_DEV bool isPresent() const {
         return present;
     }
-    CUDA_HOST_DEV uint8_t getRemappedTarget() const {
+    CUDA_HOST_DEV uint16_t getRemappedTarget() const {
         return remappedTarget;
     }
-    CUDA_HOST_DEV void setRemappedTarget(uint8_t newTarget) {
+    CUDA_HOST_DEV void setRemappedTarget(uint16_t newTarget) {
         remappedTarget = newTarget;
     }
 };
