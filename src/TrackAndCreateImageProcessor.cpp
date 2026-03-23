@@ -29,9 +29,10 @@ TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(
     float thres,
     int minimumFrames,
     std::shared_ptr<FrameSampler> sampler,
+    std::unique_ptr<TextProvider> provider,
     int devId
-) : finalX(x), finalY(y), masksCount(masks), threshold(thres),
-    tracker(nullptr), minimumFrameThreshold(minimumFrames), frameSampler(sampler) {
+) : finalX(x), finalY(y), masksCount(masks), threshold(thres), tracker(nullptr), minimumFrameThreshold(minimumFrames),
+    templateCount(0), frameSampler(sampler), textProvider(std::move(provider)) {
     cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
     cudaDevice->switchCudaDevice();
     outputMask = cv::cuda::GpuMat(cv::Size(x, y), CV_8UC1);
@@ -43,20 +44,37 @@ TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(
 
 void TrackAndCreateImageProcessor::allocateMemory() {
     cudaDevice->switchCudaDevice();
-    auto allocateError = cudaMalloc((void**)&maskMappingsGpuPtr, masksCount * sizeof(MappedMask));
-
-    if (allocateError != cudaSuccess) {
+    // Allocate the space for the mask mappings
+    auto maskGpuError = cudaMalloc((void**)&maskMappingsGpuPtr, masksCount * sizeof(MappedMask));
+    if (maskGpuError != cudaSuccess) {
         throw std::runtime_error(
             std::string("Failed to allocate bytes on the CUDA device. Reason: ")
-            + cudaGetErrorString(allocateError)
+            + cudaGetErrorString(maskGpuError)
         );
     }
 
-    auto hostAllocateError = cudaHostAlloc((void**)&maskMappingsCpuPtr, masksCount * sizeof(MappedMask), cudaHostAllocDefault);
-    if (hostAllocateError != cudaSuccess) {
+    auto hostMaskError = cudaHostAlloc((void**)&maskMappingsCpuPtr, masksCount * sizeof(MappedMask), cudaHostAllocDefault);
+    if (hostMaskError != cudaSuccess) {
         throw std::runtime_error(
             std::string("Failed to allocate pinned memory. Reason: ")
-            + cudaGetErrorString(hostAllocateError)
+            + cudaGetErrorString(hostMaskError)
+        );
+    }
+
+    // Allocate the space for text templates
+    auto hostTemplateError = cudaHostAlloc((void**)&textTemplateCpuPtr, masksCount * sizeof(TextTemplateBlueprint), cudaHostAllocDefault);
+    if (hostTemplateError != cudaSuccess) {
+        throw std::runtime_error(
+            std::string("Failed to allocate pinned memory. Reason: ")
+            + cudaGetErrorString(hostTemplateError)
+        );
+    }
+
+    auto templateGpuError = cudaMalloc((void**)&textTemplateGpuPtr, masksCount * sizeof(GPUTextTemplateBlueprint));
+    if (templateGpuError != cudaSuccess) {
+        throw std::runtime_error(
+            std::string("Failed to allocate bytes on the CUDA device. Reason: ")
+            + cudaGetErrorString(templateGpuError)
         );
     }
 }
@@ -82,6 +100,9 @@ std::vector<std::shared_ptr<byte_track::STrack>> TrackAndCreateImageProcessor::g
     trackedObjects.clear();
 
     // TODO: Also write in the coordinates to write text? I.e. DrawableTextPlan
+    // It would be cheaper to populate the text blueprints here (one less loop through the array) 
+    // but they could end up being removed by the bytetrack, so there is chance that it forms an incorrect result
+    // DISCUSS
     for (int i = 0; i < masksCount; ++i) {
         int baseIndex = i * 4;
         // Even though bytetrack does thresholding, it's cheaper to do it here as well
@@ -143,6 +164,22 @@ void TrackAndCreateImageProcessor::copyMappingArray() {
         throw std::runtime_error(
             std::string("Failed to copy logits to CUDA. Reason: ")
             + cudaGetErrorString(error)
+        );
+    }
+}
+
+// TODO: gut this entirely... blueprint will lose context immediately so this code doesn't work
+// For highest performance at runtime, consider std::vector or stack allocated blueprints, convert
+// them to pinned GPU blueprints and then copy them across to the GPU as one batch
+void TrackAndCreateImageProcessor::copyTextTemplates() {
+    for (int i = 0; i < templateCount; ++i) {
+        GPUTextTemplateBlueprint blueprint = static_cast<GPUTextTemplateBlueprint>(textTemplateCpuPtr[i]);
+        cudaMemcpyAsync(
+            (void*)(textTemplateGpuPtr + i),
+            (void*)&blueprint,
+            sizeof(GPUTextTemplateBlueprint),
+            cudaMemcpyHostToDevice,
+            cudaDevice->getCudaStream()
         );
     }
 }
@@ -217,6 +254,30 @@ TrackAndCreateImageProcessor::~TrackAndCreateImageProcessor() {
         }
         maskMappingsCpuPtr = nullptr;
     }
+
+    if (textTemplateCpuPtr != nullptr) {
+        auto error = cudaFreeHost((void*)textTemplateCpuPtr);
+
+        if (error != cudaSuccess) {
+            std::cerr 
+                << "Could not free pinned host memory. This application may be leaking memory. Reason: " 
+                << cudaGetErrorString(error)
+                << std::endl;
+        }
+        textTemplateCpuPtr = nullptr;
+    }
+
+    if (textTemplateGpuPtr != nullptr) {
+        auto error = cudaFree((void*)textTemplateGpuPtr);
+
+        if (error != cudaSuccess) {
+            std::cerr 
+                << "Could not free pinned host memory. This application may be leaking memory. Reason: " 
+                << cudaGetErrorString(error)
+                << std::endl;
+        }
+        textTemplateGpuPtr = nullptr;
+    }
 }
 
 void TrackAndCreateImageProcessor::syncAndCheckCuda() {
@@ -228,24 +289,15 @@ void TrackAndCreateImageProcessor::syncAndCheckCuda() {
     }
 }
 
-void TrackAndCreateImageProcessor::generateInsertableNumbers(int count) {
-    // TODO: make these parameters? 
-    int fontFace = cv::FONT_HERSHEY_SIMPLEX;
-    int thickness = 3;
-    double baseSize = 2;
-
-    for (int i = 0; i < count; ++i) {
-        cv::Mat newNumber();
-
-    }
-}
-
 TrackAndCreateImageProcessor::TrackAndCreateImageProcessor(TrackAndCreateImageProcessor&& other) noexcept 
     : finalX(other.finalX), finalY(other.finalY), masksCount(other.masksCount),
         threshold(other.threshold), intermediateMask(std::move(other.intermediateMask)), outputMask(std::move(other.outputMask)),
-        maskMappingsCpuPtr(other.maskMappingsCpuPtr), maskMappingsGpuPtr(other.maskMappingsGpuPtr), cudaDevice(other.cudaDevice),
-        tracker(std::move(other.tracker)), trackedObjects(std::move(other.trackedObjects)), minimumFrameThreshold(other.minimumFrameThreshold),
-        frameSampler(other.frameSampler) {
+        maskMappingsCpuPtr(other.maskMappingsCpuPtr), maskMappingsGpuPtr(other.maskMappingsGpuPtr), textTemplateCpuPtr(other.textTemplateCpuPtr), templateCount(other.templateCount),
+        textTemplateGpuPtr(other.textTemplateGpuPtr), cudaDevice(other.cudaDevice), tracker(std::move(other.tracker)),
+        trackedObjects(std::move(other.trackedObjects)), minimumFrameThreshold(other.minimumFrameThreshold), frameSampler(other.frameSampler),
+        textProvider(std::move(other.textProvider)) {
             other.maskMappingsCpuPtr = nullptr;
             other.maskMappingsGpuPtr = nullptr;
+            other.textTemplateCpuPtr = nullptr;
+            other.textTemplateGpuPtr = nullptr;
 }

@@ -52,6 +52,10 @@ std::shared_ptr<const cv::cuda::GpuMat> TextProviderImpl::getTextForNumber(int n
     return numbers[number];
 }
 
+bool TextProviderImpl::hasTextForNumber(int number) const {
+    return number >= 0 && number < numbers.size(); 
+}
+
 int TextProviderImpl::getFrameX() const {
     return frameX;
 }

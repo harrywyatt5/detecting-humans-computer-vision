@@ -8,6 +8,8 @@
 #include "GpuImage.h"
 #include "Sam3Context.h"
 #include "MappedMask.h"
+#include "TextProvider.h"
+#include "TextTemplateBlueprint.h"
 #include <ByteTrack/BYTETracker.h>
 #include <ByteTrack/Object.h>
 #include <opencv2/opencv.hpp>
@@ -26,14 +28,15 @@ private:
     cv::cuda::GpuMat outputMask;
     MappedMask* maskMappingsGpuPtr;
     MappedMask* maskMappingsCpuPtr;
+    TextTemplateBlueprint* textTemplateCpuPtr;
+    GPUTextTemplateBlueprint* textTemplateGpuPtr;
+    int templateCount;
     std::shared_ptr<CudaDevice> cudaDevice;
     std::unique_ptr<byte_track::BYTETracker> tracker;
     std::vector<byte_track::Object> trackedObjects;
     int minimumFrameThreshold;
     std::shared_ptr<FrameSampler> frameSampler;
-    int insertableNumXSize;
-    int insertableNumYSize;
-    std::vector<cv::cuda::GpuMat> insertableNums;
+    std::unique_ptr<TextProvider> textProvider;
 
     void allocateMemory();
     void syncAndCheckCuda();
@@ -48,8 +51,9 @@ private:
         const CPUTensor<float>& logicTensor,
         const std::vector<std::shared_ptr<byte_track::STrack>>& tracks
     );
+    void populateTextTemplates(const std::vector<std::shared_ptr<byte_track::STrack>>& tracks);
+    void copyTextTemplates();
     float calculateScore(const CPUTensor<float>& logitsTensor, const CPUTensor<float>& logicTensor, int index) const;
-    void generateInsertableNumbers(int count);
 public:
     TrackAndCreateImageProcessor(
         int x,
@@ -60,6 +64,7 @@ public:
         float thres,
         int minimumFrames,
         std::shared_ptr<FrameSampler> sampler,
+        std::unique_ptr<TextProvider> provider,
         int devId
     );
     void processOutput(
