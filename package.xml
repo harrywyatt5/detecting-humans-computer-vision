@@ -13,6 +13,8 @@
   <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>ament_index_cpp</depend>
+  <depend>isaac_ros_managed_nitros</depend>
+  <depend>isaac_ros_nitros_image_type</depend>
 
   <export>
     <build_type>ament_cmake</build_type>

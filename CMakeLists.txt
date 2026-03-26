@@ -65,6 +65,8 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(ament_index_cpp REQUIRED)
+find_package(isaac_ros_managed_nitros REQUIRED)
+find_package(isaac_ros_nitros_image_type REQUIRED)
 
 # Link standard CMAKE libs
 target_link_libraries(${PROJECT_NAME}
@@ -81,6 +83,8 @@ ament_target_dependencies(${PROJECT_NAME}
 	std_msgs
 	sensor_msgs
 	ament_index_cpp
+	isaac_ros_managed_nitros
+	isaac_ros_nitros_image_type
 )
 
 # Create a directory for the model cache

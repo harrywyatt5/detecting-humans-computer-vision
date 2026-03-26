@@ -15,6 +15,9 @@
 #include <opencv2/opencv.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/image_encodings.hpp>
+#include <isaac_ros_managed_nitros/managed_nitros_publisher.hpp>
+#include <isaac_ros_managed_nitros/managed_nitros_subscriber.hpp>
+#include <isaac_ros_nitros_image_type/nitros_image_view.hpp>
 #include <cstdlib>
 #include <cstdint>
 #include <memory>
@@ -53,18 +56,30 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<std::string>("masked_image_topic", "masked_image");
     this->declare_parameter<std::string>("masked_image_frame_id", "image_frame");
 
-    // Prepare subscribers
-    rclcpp::QoS qosProfile(1);
-    qosProfile.keep_last(1);
-    qosProfile.best_effort();
-    leftCameraSub = this->create_subscription<sensor_msgs::msg::Image>(
+    // Prepare nitros subscriber and publisher
+    rclcpp::QoS subQosProfile(1);
+    subQosProfile.keep_last(1);
+    subQosProfile.best_effort();
+    subQosProfile.durability_volatile();
+    leftCameraSub = std::make_shared<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>>(
+        this,
         this->get_parameter("camera_left_topic").as_string(),
-        qosProfile,
-        std::bind(&HumanDetectionNode::leftImageCallback, this, std::placeholders::_1)
+        "nitros_image",
+        std::bind(&HumanDetectionNode::leftImageCallback, this, std::placeholders::_1),
+        nitros::NitrosDiagnosticsConfig{},
+        subQosProfile
     );
-    maskedImagePub = this->create_publisher<sensor_msgs::msg::Image>(
+
+    rclcpp::QoS pubQosProfile(10);
+    pubQosProfile.keep_last(10);
+    pubQosProfile.best_effort();
+    pubQosProfile.durability_volatile();
+    maskedImagePub = std::make_shared<nitros::ManagedNitrosPublisher<nitros::NitrosImage>>(
+        this,
         this->get_parameter("masked_image_topic").as_string(),
-        10
+        "nitros_image", 
+        nitros::NitrosDiagnosticsConfig{},
+        pubQosProfile
     );
 
     // Configurables
@@ -106,8 +121,8 @@ void HumanDetectionNode::mountPrompt() {
     samModel->mountAndCalculatePrompt(promptToken);
 }
 
-void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::Image& img) {
-    auto encoding = img.encoding;
+void HumanDetectionNode::configureCameraImageConversion(const nitros::NitrosImageView& img) {
+    auto encoding = img.GetEncoding();
     if (encoding == sensor_msgs::image_encodings::BGR8) {
         inputConversion = cv::COLOR_BGR2RGB;
     } else if (encoding == sensor_msgs::image_encodings::RGBA8) {
@@ -119,7 +134,7 @@ void HumanDetectionNode::configureCameraImageConversion(const sensor_msgs::msg::
     }
 }
 
-void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg) {
+void HumanDetectionNode::leftImageCallback(nitros::NitrosImageView& msg) {
     if (!isFullyConfigured) {
         configureNodeFromInitialImage(*msg);
         RCLCPP_INFO(this->get_logger(), "Configured environment using initial frame correctly");
@@ -141,9 +156,11 @@ void HumanDetectionNode::leftImageCallback(const sensor_msgs::msg::Image::ConstS
     maskedImagePub->publish(std::move(finalMsg));
 }
 
-void HumanDetectionNode::configureNodeFromInitialImage(const sensor_msgs::msg::Image& image) {
-    int imageHeight = (int)image.height;
-    int imageWidth = (int)image.width;
+void HumanDetectionNode::configureNodeFromInitialImage(const nitros::NitrosImageView& image) {
+    // Both these values are actually unsigned so have a larger range than int - 
+    // sure it won't be a real problem!
+    int imageHeight = (int)image.GetHeight();
+    int imageWidth = (int)image.GetWidth();
 
     imageInput = std::make_shared<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 1008, 1008, *samContext));
     auto builder = TrackAndCreateImageProcessorBuilder();

@@ -9,8 +9,13 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <opencv2/opencv.hpp>
+#include <isaac_ros_managed_nitros/managed_nitros_publisher.hpp>
+#include <isaac_ros_managed_nitros/managed_nitros_subscriber.hpp>
+#include <isaac_ros_nitros_image_type/nitros_image_view.hpp>
 #include <memory>
 #include <optional>
+
+namespace nitros = nvidia::isaac_ros::nitros;
 
 class HumanDetectionNode : public rclcpp::Node {
 private:
@@ -27,17 +32,17 @@ private:
     bool isFullyConfigured;
 
     // ROS2 data
-    rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr leftCameraSub;
-    rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr maskedImagePub;
+    std::shared_ptr<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>> leftCameraSub;
+    std::shared_ptr<nitros::ManagedNitrosPublisher<nitros::NitrosImage>> maskedImagePub;
 
     // Callbacks
-    void leftImageCallback(const sensor_msgs::msg::Image::ConstSharedPtr msg);
+    void leftImageCallback(const nitros::NitrosImageView& msg);
 
     // Helpers
     void configureSam3Model(const LoggingLevel& loggingLevel);
     void mountPrompt();
-    void configureCameraImageConversion(const sensor_msgs::msg::Image& image);
-    void configureNodeFromInitialImage(const sensor_msgs::msg::Image& image);
+    void configureCameraImageConversion(const nitros::NitrosImageView& image);
+    void configureNodeFromInitialImage(const nitros::NitrosImageView& image);
 public:
     HumanDetectionNode();
 };
