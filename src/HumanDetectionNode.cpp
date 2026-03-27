@@ -64,7 +64,7 @@ HumanDetectionNode::HumanDetectionNode()
     leftCameraSub = std::make_shared<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>>(
         this,
         this->get_parameter("camera_left_topic").as_string(),
-        "nitros_image",
+        nitros::nitros_image_rgb8_t::supported_type_name,
         std::bind(&HumanDetectionNode::leftImageCallback, this, std::placeholders::_1),
         nitros::NitrosDiagnosticsConfig{},
         subQosProfile
@@ -77,7 +77,7 @@ HumanDetectionNode::HumanDetectionNode()
     maskedImagePub = std::make_shared<nitros::ManagedNitrosPublisher<nitros::NitrosImage>>(
         this,
         this->get_parameter("masked_image_topic").as_string(),
-        "nitros_image", 
+        nitros::nitros_image_rgb8_t::supported_type_name, 
         nitros::NitrosDiagnosticsConfig{},
         pubQosProfile
     );
@@ -134,9 +134,9 @@ void HumanDetectionNode::configureCameraImageConversion(const nitros::NitrosImag
     }
 }
 
-void HumanDetectionNode::leftImageCallback(nitros::NitrosImageView& msg) {
+void HumanDetectionNode::leftImageCallback(const nitros::NitrosImageView& msg) {
     if (!isFullyConfigured) {
-        configureNodeFromInitialImage(*msg);
+        configureNodeFromInitialImage(msg);
         RCLCPP_INFO(this->get_logger(), "Configured environment using initial frame correctly");
         // We don't process the current frame, as we're probably far behind due to having to configure the space
         return;
@@ -144,14 +144,14 @@ void HumanDetectionNode::leftImageCallback(nitros::NitrosImageView& msg) {
 
     frameSampler->toggleFrame(true);
 
-    // Mount the image. This is zero copy on the CPU (although has to be uploaded to GPU and resized)
-    imageInput->uploadImageFromSensorMsg(*msg, inputConversion);
+    // Mount the image.
+    imageInput->copyImageFromNitros(msg, inputConversion);
     samModel->detect(imageInput);
     samModel->processOutput();
 
     trackCreateProcessor->outputMaskedImage(*imageInput->getMutableGpuImage(), threshold);
 
-    auto finalMsg = imageInput->getConstGpuImage()->createRos2ImageMessage(imageFrameId, this->get_clock()->now());
+    auto finalMsg = imageInput->getConstGpuImage()->createNitrosImageMessage(imageFrameId, this->get_clock()->now());
     frameSampler->toggleFrame(true);
     maskedImagePub->publish(std::move(finalMsg));
 }

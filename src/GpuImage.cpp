@@ -4,9 +4,14 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <std_msgs/msg/header.hpp>
+#include <isaac_ros_nitros_image_type/nitros_image.hpp>
+#include <isaac_ros_nitros_image_type/nitros_image_builder.hpp>
 #include <sensor_msgs/image_encodings.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <cuda_runtime.h>
 #include <memory>
+#include <cstdint>
 #include <stdexcept>
 
 GpuImage::GpuImage(cv::cuda::GpuMat mat, int devId) : internalData(std::move(mat)) {
@@ -16,6 +21,11 @@ GpuImage::GpuImage(cv::cuda::GpuMat mat, int devId) : internalData(std::move(mat
 void GpuImage::uploadCpuImage(const cv::Mat& cpuImage) {
     cudaDevice->switchCudaDevice();
     internalData.upload(cpuImage, cudaDevice->getOpenCVCudaStream());
+}
+
+void GpuImage::copyFrom(const cv::cuda::GpuMat& gpuImage) {
+    cudaDevice->switchCudaDevice();
+    gpuImage.copyTo(internalData, cudaDevice->getOpenCVCudaStream());
 }
 
 void GpuImage::toNewColourTarget(cv::ColorConversionCodes code) {
@@ -69,4 +79,38 @@ std::unique_ptr<sensor_msgs::msg::Image> GpuImage::createRos2ImageMessage(const 
     internalData.download(cpuImage, cudaDevice->getOpenCVCudaStream());
 
     return msg;
+}
+
+nitros::NitrosImage GpuImage::createNitrosImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) const {
+    cudaDevice->switchCudaDevice();
+
+    std_msgs::msg::Header header;
+    header.stamp = broadcastTime;
+    header.frame_id = frameName;
+
+    uint32_t stepWithoutPadding = internalData.cols * 3;
+
+    uint8_t* gpuOutput;
+    auto result = cudaMalloc((void**)&gpuOutput, internalData.rows * stepWithoutPadding * sizeof(uint8_t));
+    if (result != cudaSuccess) {
+        throw std::runtime_error(std::string("Could not create buffer for final message. Reason: ") + cudaGetErrorString(result));
+    }
+
+    cv::cuda::GpuMat tempWrapper(
+        internalData.rows,
+        internalData.cols,
+        CV_8UC3,
+        gpuOutput,
+        stepWithoutPadding
+    );
+    internalData.copyTo(tempWrapper, cudaDevice->getOpenCVCudaStream());
+    // We might create the nitros image and send it out to subscribers before we've finished writing to it
+    cudaDevice->waitForCompletion();
+
+    return nitros::NitrosImageBuilder()
+            .WithDimensions(internalData.rows, internalData.cols)
+            .WithEncoding(sensor_msgs::image_encodings::RGB8)
+            .WithHeader(header)
+            .WithGpuData(gpuOutput)
+            .Build();
 }

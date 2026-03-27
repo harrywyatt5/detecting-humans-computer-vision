@@ -31,8 +31,6 @@ public:
     static TextTemplateBlueprint createBlueprintFromRect(
         int id,
         const byte_track::Rect<float>& boundingBox,
-        int intermediateWidth,
-        int intermediateHeight,
         int finalWidth,
         int finalHeight,
         const TextProvider* textProvider

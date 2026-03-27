@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <opencv2/cudawarping.hpp>
+#include <isaac_ros_nitros_image_type/nitros_image_view.hpp>
 #include <memory>
 #include <cuda_runtime.h>
 #include <stdexcept>
@@ -90,6 +91,31 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
         cv::cuda::cvtColor(temp, gpuImage->getMutableGpuMat(), conversion.value(), 0, cudaDevice->getOpenCVCudaStream());
     } else {
         gpuImage->uploadCpuImage(cpuImage);
+    }
+
+    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
+    hasUploadedImage = true;
+}
+
+void PersistentImageInput::copyImageFromNitros(const nitros::NitrosImageView& image, const std::optional<cv::ColorConversionCodes> conversion) {
+    // Ensure the message has the same size as we're expecting
+    if (image.GetHeight() != (unsigned int)y || image.GetWidth() != (unsigned int)x) {
+        throw std::runtime_error("Image does not match size allocated to this object!");
+    }
+
+    const cv::cuda::GpuMat incomingImg(
+        y,
+        x,
+        CV_8UC3,
+        const_cast<unsigned char*>(image.GetGpuData()),
+        image.GetStride()
+    );
+
+    // Force colour conversion if necessary
+    if (conversion.has_value()) {
+        cv::cuda::cvtColor(incomingImg, gpuImage->getMutableGpuMat(), conversion.value(), 0, cudaDevice->getOpenCVCudaStream());
+    } else {
+        gpuImage->copyFrom(incomingImg);
     }
 
     cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());

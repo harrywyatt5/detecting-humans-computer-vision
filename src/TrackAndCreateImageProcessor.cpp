@@ -209,8 +209,6 @@ void TrackAndCreateImageProcessor::populateTextTemplates(const std::vector<std::
             textTemplates.push_back(TextTemplateBlueprint::createBlueprintFromRect(
                 trackId,
                 tracks[i]->getRect(),
-                intermediateMask.cols,
-                intermediateMask.rows,
                 finalX,
                 finalY,
                 textProvider.get()
