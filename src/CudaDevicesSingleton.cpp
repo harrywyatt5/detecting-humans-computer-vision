@@ -20,7 +20,7 @@ std::shared_ptr<CudaDevice> CudaDevicesSingleton::getForId(int id) {
         }
     }
 
-    auto newDevice = std::make_shared<CudaDevice>(id);
+    auto newDevice = std::make_shared<CudaDevice>(id, CudaDevice::CudaStreamPriority::HIGHEST);
     devices.push_back(newDevice);
 
     return newDevice;
