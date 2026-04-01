@@ -7,3 +7,4 @@ model_cache/*
 sam3-onnx/*
 .devcontainer/**
 .vscode/**
+**/.venv/**
