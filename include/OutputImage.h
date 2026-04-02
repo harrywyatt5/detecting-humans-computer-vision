@@ -26,4 +26,6 @@ public:
 
     bool isClaimable() const;
     void claimBuffer();
+    void releaseBuffer();
+    ~OutputImage();
 };
