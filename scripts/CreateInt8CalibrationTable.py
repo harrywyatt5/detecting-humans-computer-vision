@@ -79,7 +79,7 @@ def main():
     with open(args.encoder, "rb") as f:
         parser.parse(f.read())
     
-    config.set_flag(tensorrt.INT8)
+    config.set_flag(tensorrt.BuilderFlag.INT8)
     config.int8_calibrator = Calibrator(args.path)
 
     print("Starting to build int8 cache")
