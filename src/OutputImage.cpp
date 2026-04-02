@@ -1,12 +1,16 @@
 #include "OutputImage.h"
 
+#include "CudaDevicesSingleton.h"
 #include <opencv2/opencv.hpp>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <cuda_runtime.h>
 
-OutputImage::OutputImage(int x, int y) : imageX(x), imageY(y), data(nullptr), isInUse(false) {
+OutputImage::OutputImage(int x, int y, int devId) : imageX(x), imageY(y), data(nullptr), isInUse(false) {
+    device = CudaDevicesSingleton::getInstance()->getForId(devId);
+    device->switchCudaDevice();
+
     auto result = cudaMalloc((void**)&data, x * y * 3 * sizeof(uint8_t));
     if (result != cudaSuccess) {
         throw std::runtime_error(std::string("Failed to allocate output buffer. Reason: ") + cudaGetErrorString(result));
@@ -43,3 +47,4 @@ cv::cuda::GpuMat OutputImage::getDataAsGpuMat() {
         x * 3
     );
 }
+
