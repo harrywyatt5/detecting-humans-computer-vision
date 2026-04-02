@@ -83,7 +83,7 @@ def main():
     config.int8_calibrator = Calibrator(args.path)
 
     print("Starting to build int8 cache")
-    builder.build_engine(network, config)
+    builder.build_serialized_network(network, config)
     print("Finished!")
 
 
