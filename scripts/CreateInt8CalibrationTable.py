@@ -79,6 +79,9 @@ def main():
     with open(args.encoder, "rb") as f:
         parser.parse(f.read())
     
+    profile = builder.create_optimization_profile()
+    profile.set_shape("images", (1, 3, 1008, 1008), (1, 3, 1008, 1008), (1, 3, 1008, 1008))
+    config.add_optimization_profile(profile)
     config.set_flag(tensorrt.BuilderFlag.INT8)
     config.int8_calibrator = Calibrator(args.path)
 
