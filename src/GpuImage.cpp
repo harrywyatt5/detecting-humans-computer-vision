@@ -58,10 +58,35 @@ void GpuImage::copyFrom(const cv::cuda::GpuMat& gpuImage) {
 
 void GpuImage::toNewColourTarget(cv::ColorConversionCodes code) {
     cudaDevice->switchCudaDevice();
-    cv::cuda::GpuMat tempMat;
-    cv::cuda::cvtColor(internalData, tempMat, code, 0, cudaDevice->getOpenCVCudaStream());
+    // It's super easy if we are using a GpuMat managed buffer. If we aren't, it's a bit harder unfortunately
+    // but we essentially replicate the logic of the epic swap command
+    if (gpuBuffer == nullptr) {
+        cv::cuda::GpuMat tempMat;
+        cv::cuda::cvtColor(internalData, tempMat, code, 0, cudaDevice->getOpenCVCudaStream());
 
-    internalData.swap(tempMat);
+        internalData.swap(tempMat);
+    } else {
+        uint8_t* newBuffer;
+        auto allocError = cudaMallocAsync((void**)&newBuffer, 3 * internalData.cols * internalData.rows * sizeof(uint8_t), cudaDevice->getCudaStream());
+        
+        if (allocError != cudaSuccess) {
+            throw std::runtime_error(std::string("Failed to allocate CUDA bytes to perform colour conversion. Reason: ") + cudaGetErrorString(allocError));
+        }
+
+        auto tempMat = cv::cuda::GpuMat(
+            internalData.rows,
+            internalData.cols,
+            CV_8UC3,
+            newBuffer,
+            internalData.cols * 3
+        );
+        cv::cuda::cvtColor(internalData, tempMat, code, 0, cudaDevice->getOpenCVCudaStream());
+
+        // Free memory in this object before replacing the pointer with our new buffer
+        freeMemory();
+        gpuBuffer = newBuffer;
+        internalData = std::move(tempMat);
+    }
 }
 
 void GpuImage::download(cv::Mat& target) const {
@@ -149,6 +174,17 @@ void GpuImage::throwIfDimensionMismatch(int cols, int rows) const {
     }
 }
 
+void GpuImage::freeMemory() {
+    if (gpuBuffer != nullptr) {
+        auto result = cudaFreeAsync(gpuBuffer, cudaDevice->getCudaStream());
+        gpuBuffer = nullptr;
+
+        if (result != cudaSuccess) {
+            std::cerr << "Could not free CUDA memory in GpuImage. The application may be leaking memory. Reason: " << cudaGetErrorString(result) << "\n";
+        }
+    }
+}
+
 GpuImage::GpuImage(GpuImage&& other) noexcept : gpuBuffer(other.gpuBuffer), internalData(std::move(other.internalData)), cudaDevice(other.cudaDevice) {
     other.gpuBuffer = nullptr;
     other.cudaDevice = nullptr;
@@ -160,30 +196,18 @@ GpuImage& GpuImage::operator=(GpuImage&& other) noexcept   {
         return *this;
     }
 
-    if (gpuBuffer != nullptr) {
-        auto result = cudaFree(gpuBuffer);
-
-        if (result != cudaSuccess) {
-            std::cerr << "Could not free CUDA memory in GpuImage. The application may be leaking memory. Reason: " << cudaGetErrorString(result) << "\n";
-        }
-    }
-    gpuBuffer = other.gpuBuffer;
+    // Free memory will set the pointer to nullptr, so we have to capture it before
+    uint8_t* tempBuffer = other.gpuBuffer;
+    other.freeMemory();
+    gpuBuffer = tempBuffer;
     internalData = std::move(other.internalData);
     cudaDevice = other.cudaDevice;
 
-    other.gpuBuffer = nullptr;
     other.cudaDevice = nullptr;
 
     return *this;
 }
 
 GpuImage::~GpuImage() {
-    if (gpuBuffer != nullptr) {
-        auto result = cudaFree(gpuBuffer);
-        gpuBuffer = nullptr;
-
-        if (result != cudaSuccess) {
-            std::cerr << "Could not free CUDA memory in GpuImage. The application may be leaking memory. Reason: " << cudaGetErrorString(result) << "\n";
-        }
-    }
+    freeMemory();
 }

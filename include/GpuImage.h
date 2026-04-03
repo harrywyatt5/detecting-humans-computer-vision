@@ -20,6 +20,7 @@ private:
     cv::cuda::GpuMat internalData;
     std::shared_ptr<CudaDevice> cudaDevice;
 
+    void freeMemory();
     void throwIfDimensionMismatch(int cols, int rows) const;
 public:
     GpuImage(cv::cuda::GpuMat mat, int devId);
