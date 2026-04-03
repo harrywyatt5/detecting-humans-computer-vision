@@ -1,6 +1,7 @@
 #include "GpuImage.h"
 
 #include "CudaDevicesSingleton.h"
+#include "CudaDevice.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudaimgproc.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -12,18 +13,45 @@
 #include <cuda_runtime.h>
 #include <memory>
 #include <cstdint>
+#include <string>
 #include <stdexcept>
+#include <iostream>
 
-GpuImage::GpuImage(cv::cuda::GpuMat mat, int devId) : internalData(std::move(mat)) {
+GpuImage::GpuImage(cv::cuda::GpuMat mat, int devId) : gpuBuffer(nullptr), internalData(std::move(mat)) {
     cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
 }
 
+GpuImage::GpuImage(int width, int height, int devId) {
+    cudaDevice = CudaDevicesSingleton::getInstance()->getForId(devId);
+    cudaDevice->switchCudaDevice();
+
+    auto allocError = cudaMalloc((void**)&gpuBuffer, 3 * width * height * sizeof(uint8_t));
+    if (allocError != cudaSuccess) {
+        throw std::runtime_error(std::string("Failed to allocate to CUDA device. Reason: ") + cudaGetErrorString(allocError));
+    }
+
+    auto memsetError = cudaMemset((void*)&gpuBuffer, 0, 3 * width * height * sizeof(uint8_t));
+    if (memsetError != cudaSuccess) {
+        throw std::runtime_error(std::string("Failed to memset GpuImage on CUDA. Reason: ") + cudaGetErrorString(memsetError));
+    }
+    
+    internalData = cv::cuda::GpuMat(
+        height,
+        width,
+        CV_8UC3,
+        (void*)gpuBuffer,
+        width * 3
+    );
+}
+
 void GpuImage::uploadCpuImage(const cv::Mat& cpuImage) {
+    throwIfDimensionMismatch(cpuImage.cols, cpuImage.rows);
     cudaDevice->switchCudaDevice();
     internalData.upload(cpuImage, cudaDevice->getOpenCVCudaStream());
 }
 
 void GpuImage::copyFrom(const cv::cuda::GpuMat& gpuImage) {
+    throwIfDimensionMismatch(gpuImage.cols, gpuImage.rows);
     cudaDevice->switchCudaDevice();
     gpuImage.copyTo(internalData, cudaDevice->getOpenCVCudaStream());
 }
@@ -113,4 +141,49 @@ nitros::NitrosImage GpuImage::createNitrosImageMessage(const std::string& frameN
             .WithHeader(header)
             .WithGpuData(gpuOutput)
             .Build();
+}
+
+void GpuImage::throwIfDimensionMismatch(int cols, int rows) const {
+    if (internalData.cols != cols || internalData.rows != rows) {
+        throw std::runtime_error("Failed to perform operation to GpuImage. Input image must have the same width and height as the target GpuImage");
+    }
+}
+
+GpuImage::GpuImage(GpuImage&& other) noexcept : gpuBuffer(other.gpuBuffer), internalData(std::move(other.internalData)), cudaDevice(other.cudaDevice) {
+    other.gpuBuffer = nullptr;
+    other.cudaDevice = nullptr;
+}
+
+GpuImage& GpuImage::operator=(GpuImage&& other) noexcept   {
+    // Avoid issues if we are moving the object to itself
+    if (this == &other) {
+        return *this;
+    }
+
+    if (gpuBuffer != nullptr) {
+        auto result = cudaFree(gpuBuffer);
+
+        if (result != cudaSuccess) {
+            std::cerr << "Could not free CUDA memory in GpuImage. The application may be leaking memory. Reason: " << cudaGetErrorString(result) << "\n";
+        }
+    }
+    gpuBuffer = other.gpuBuffer;
+    internalData = std::move(other.internalData);
+    cudaDevice = other.cudaDevice;
+
+    other.gpuBuffer = nullptr;
+    other.cudaDevice = nullptr;
+
+    return *this;
+}
+
+GpuImage::~GpuImage() {
+    if (gpuBuffer != nullptr) {
+        auto result = cudaFree(gpuBuffer);
+        gpuBuffer = nullptr;
+
+        if (result != cudaSuccess) {
+            std::cerr << "Could not free CUDA memory in GpuImage. The application may be leaking memory. Reason: " << cudaGetErrorString(result) << "\n";
+        }
+    }
 }
