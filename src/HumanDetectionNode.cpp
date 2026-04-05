@@ -70,8 +70,8 @@ HumanDetectionNode::HumanDetectionNode()
         subQosProfile
     );
 
-    rclcpp::QoS pubQosProfile(10);
-    pubQosProfile.keep_last(10);
+    rclcpp::QoS pubQosProfile(5);
+    pubQosProfile.keep_last(5);
     pubQosProfile.best_effort();
     pubQosProfile.durability_volatile();
     maskedImagePub = std::make_shared<nitros::ManagedNitrosPublisher<nitros::NitrosImage>>(

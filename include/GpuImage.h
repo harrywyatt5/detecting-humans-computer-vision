@@ -15,7 +15,7 @@ namespace nitros = nvidia::isaac_ros::nitros;
 // In some cases, such as when a GpuImage is spawned by OutImgSchedulerSingleton, a GpuImage may
 // actually maintain its own internal buffer, rather than the underlying GpuMat
 class GpuImage {
-private:
+protected:
     uint8_t* gpuBuffer;
     cv::cuda::GpuMat internalData;
     std::shared_ptr<CudaDevice> cudaDevice;
@@ -31,8 +31,8 @@ public:
     void download(cv::Mat& target) const;
     int getWidth() const;
     int getHeight() const;
-    std::unique_ptr<sensor_msgs::msg::Image> createRos2ImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) const;
-    nitros::NitrosImage createNitrosImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) const;
+    virtual std::unique_ptr<sensor_msgs::msg::Image> createRos2ImageMessage(const std::string& frameName, rclcpp::Time broadcastTime);
+    virtual nitros::NitrosImage createNitrosImageMessage(const std::string& frameName, rclcpp::Time broadcastTime);
 
     const cv::cuda::GpuMat& getConstGpuMat() const;
     cv::cuda::GpuMat& getMutableGpuMat();
@@ -42,5 +42,5 @@ public:
     GpuImage& operator=(const GpuImage&) = delete;
     GpuImage(GpuImage&& other) noexcept;
     GpuImage& operator=(GpuImage&& other) noexcept;
-    ~GpuImage();
+    virtual ~GpuImage();
 };

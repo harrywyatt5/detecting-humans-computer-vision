@@ -3,6 +3,7 @@
 #include "CudaTensor.h"
 #include "NormaliseImageKernel.h"
 #include "CudaDevicesSingleton.h"
+#include "OutImgScheduler.h"
 #include <sensor_msgs/msg/image.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/cudaimgproc.hpp>
@@ -22,13 +23,18 @@ PersistentImageInput::PersistentImageInput(
     int imageY,
     int resizeX,
     int resizeY,
+    OutImgScheduler outImgScheduler,
     int cudaDeviceId
-) : x(imageX), y(imageY), resizedX(resizeX), resizedY(resizeY), pinnedStaticPtr(nullptr), hasUploadedImage(false) {
+) : x(imageX), y(imageY), resizedX(resizeX), resizedY(resizeY), pinnedStaticPtr(nullptr), hasUploadedImage(false), scheduler(std::move(outImgScheduler)) {
     cudaDevice = CudaDevicesSingleton::getInstance()->getForId(cudaDeviceId);
-    gpuImage = std::make_shared<GpuImage>(cv::cuda::GpuMat(cv::Size(imageX, imageY), CV_8UC3), cudaDeviceId);
+    gpuImage = nullptr;  // We start this pointer as uninitialised, we will initial it when cycleGpuImage is first called
     resizedImage = cv::cuda::GpuMat(cv::Size(resizeX, resizeY), CV_8UC3);
 
     allocatePinnedMem();
+}
+
+void PersistentImageInput::cycleGpuImage() {
+    gpuImage = scheduler.getNextFreeImage();
 }
 
 void PersistentImageInput::allocatePinnedMem() {
@@ -41,6 +47,7 @@ void PersistentImageInput::allocatePinnedMem() {
 
 void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
     // TODO: optimise this code so that it uses malloc'd data -> pinned static -> gpu
+    cycleGpuImage();
     auto img = cv::imread(path);
     if (img.empty()) {
         throw std::runtime_error("Failed to load image at " + path);
@@ -51,10 +58,10 @@ void PersistentImageInput::uploadImageFromDisk(const std::string& path) {
 
     cv::Mat convertedImg;
     cv::cvtColor(img, convertedImg, cv::COLOR_BGR2RGB);
-    gpuImage->uploadCpuImage(convertedImg);
+    gpuImage->getGpuImage().uploadCpuImage(convertedImg);
 
     // Resize on the gpu as it can be parallelised
-    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
+    cv::cuda::resize(gpuImage->getGpuImage().getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
     hasUploadedImage = true;
 }
 
@@ -72,6 +79,7 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
         throw std::runtime_error("Image does not match size allocated to this object!");
     }
 
+    cycleGpuImage();
     copyToPinnedMemory(image.data.data(), image.step);
     
     const cv::Mat cpuImage(
@@ -88,12 +96,12 @@ void PersistentImageInput::uploadImageFromSensorMsg(const sensor_msgs::msg::Imag
         // the case!
         cv::cuda::GpuMat temp;
         temp.upload(cpuImage, cudaDevice->getOpenCVCudaStream());
-        cv::cuda::cvtColor(temp, gpuImage->getMutableGpuMat(), conversion.value(), 0, cudaDevice->getOpenCVCudaStream());
+        cv::cuda::cvtColor(temp, gpuImage->getGpuImage().getMutableGpuMat(), conversion.value(), 0, cudaDevice->getOpenCVCudaStream());
     } else {
-        gpuImage->uploadCpuImage(cpuImage);
+        gpuImage->getGpuImage().uploadCpuImage(cpuImage);
     }
 
-    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
+    cv::cuda::resize(gpuImage->getGpuImage().getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
     hasUploadedImage = true;
 }
 
@@ -102,6 +110,8 @@ void PersistentImageInput::copyImageFromNitros(const nitros::NitrosImageView& im
     if (image.GetHeight() != (unsigned int)y || image.GetWidth() != (unsigned int)x) {
         throw std::runtime_error("Image does not match size allocated to this object!");
     }
+
+    cycleGpuImage();
 
     const cv::cuda::GpuMat incomingImg(
         y,
@@ -113,12 +123,12 @@ void PersistentImageInput::copyImageFromNitros(const nitros::NitrosImageView& im
 
     // Force colour conversion if necessary
     if (conversion.has_value()) {
-        cv::cuda::cvtColor(incomingImg, gpuImage->getMutableGpuMat(), conversion.value(), 0, cudaDevice->getOpenCVCudaStream());
+        cv::cuda::cvtColor(incomingImg, gpuImage->getGpuImage().getMutableGpuMat(), conversion.value(), 0, cudaDevice->getOpenCVCudaStream());
     } else {
-        gpuImage->copyFrom(incomingImg);
+        gpuImage->getGpuImage().copyFrom(incomingImg);
     }
 
-    cv::cuda::resize(gpuImage->getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
+    cv::cuda::resize(gpuImage->getGpuImage().getConstGpuMat(), resizedImage, cv::Size(resizedX, resizedY), 0, 0, cv::INTER_LINEAR, cudaDevice->getOpenCVCudaStream());
     hasUploadedImage = true;
 }
 
@@ -136,12 +146,12 @@ void PersistentImageInput::writeImageToCudaTensor(CudaTensor<float>& tensor) {
     launchNormaliseImage(resizedImage, cudaDevice->getOpenCVCudaStream(), tensor.getStartPtr());
 }
 
-std::shared_ptr<GpuImage> PersistentImageInput::getMutableGpuImage() {
-    return gpuImage;
+GpuImage& PersistentImageInput::getGpuImage() {
+    return gpuImage->getGpuImage();
 }
 
-std::shared_ptr<const GpuImage> PersistentImageInput::getConstGpuImage() const {
-    return gpuImage;
+const GpuImage& PersistentImageInput::getGpuImage() const {
+    return gpuImage->getGpuImage();
 }
 
 int PersistentImageInput::getOriginalX() const {

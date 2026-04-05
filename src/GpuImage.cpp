@@ -110,7 +110,7 @@ cv::cuda::GpuMat& GpuImage::getMutableGpuMat() {
     return internalData;
 }
 
-std::unique_ptr<sensor_msgs::msg::Image> GpuImage::createRos2ImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) const {
+std::unique_ptr<sensor_msgs::msg::Image> GpuImage::createRos2ImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) {
     cudaDevice->switchCudaDevice();
     auto msg = std::make_unique<sensor_msgs::msg::Image>();
 
@@ -134,7 +134,7 @@ std::unique_ptr<sensor_msgs::msg::Image> GpuImage::createRos2ImageMessage(const 
     return msg;
 }
 
-nitros::NitrosImage GpuImage::createNitrosImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) const {
+nitros::NitrosImage GpuImage::createNitrosImageMessage(const std::string& frameName, rclcpp::Time broadcastTime) {
     cudaDevice->switchCudaDevice();
 
     std_msgs::msg::Header header;
