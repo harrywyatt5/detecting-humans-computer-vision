@@ -149,9 +149,9 @@ void HumanDetectionNode::leftImageCallback(const nitros::NitrosImageView& msg) {
     samModel->detect(imageInput);
     samModel->processOutput();
 
-    trackCreateProcessor->outputMaskedImage(*imageInput->getMutableGpuImage(), threshold);
+    trackCreateProcessor->outputMaskedImage(imageInput->getGpuImage(), threshold);
 
-    auto finalMsg = imageInput->getConstGpuImage()->createNitrosImageMessage(imageFrameId, this->get_clock()->now());
+    auto finalMsg = imageInput->getGpuImage().createNitrosImageMessage(imageFrameId, this->get_clock()->now());
     frameSampler->toggleFrame(true);
     maskedImagePub->publish(std::move(finalMsg));
 }
