@@ -18,12 +18,16 @@ private:
     std::string textEncoderPath;
     std::string visionEncoderPath;
     std::string decoderPath;
+    bool useInt8;
+    std::string calibrationPath;
     int maxCPUThreads;
     int deviceId;
     int64_t batchLimit;
     int64_t numBoxesLimit;
     OrtLoggingLevel loggingLevel;
     GraphOptimizationLevel optimisationLevel;
+
+    void applyUniversalSessionOptions(std::vector<Ort::SessionOptions>& sessionOptions) const;
 public:
     Sam3ContextBuilder();
 
@@ -43,6 +47,8 @@ public:
     Sam3ContextBuilder& withCudaGraphsEnabled(const bool enabled);
     Sam3ContextBuilder& withComputeStreamEnabled(const bool enabled);
     Sam3ContextBuilder& withComputeStream(cudaStream_t& computeStream);
+    Sam3ContextBuilder& withUseInt8ForEncoder(const bool enabled);
+    Sam3ContextBuilder& withInt8NativeCalibration(const std::string& location);
     Sam3Context build() const;
 
     ~Sam3ContextBuilder() = default;

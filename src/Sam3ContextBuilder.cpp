@@ -18,6 +18,8 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
     maxCPUThreads = 1;
     batchLimit = 1;
     numBoxesLimit = 1;
+    useInt8 = false;
+    calibrationPath = "";
 
     tensorRTOptionsNames = {
         "device_id",
@@ -27,7 +29,10 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
         "trt_engine_cache_path",
         "trt_cuda_graph_enable",
         "has_user_compute_stream",
-        "user_compute_stream"
+        "user_compute_stream",
+        "trt_int8_enable",
+        "trt_int8_calibration_table_name",
+        "trt_int8_use_native_calibration_table"
     };
     tensorRTOptions = {
         "0",
@@ -37,6 +42,9 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
         "./trt_cache",
         "0",
         "0",
+        "0",
+        "0",
+        "",
         "0"
     };
 }
@@ -125,19 +133,46 @@ Sam3ContextBuilder& Sam3ContextBuilder::withComputeStream(cudaStream_t& computeS
     return *this;
 }
 
+Sam3ContextBuilder& Sam3ContextBuilder::withUseInt8ForEncoder(const bool enabled) {
+    // For this property as well as the calibration path, we store these settings in the builder
+    // and then enact them when actually building. Saves us having to store two lists of property names
+    // and vales for making the SessionOptions
+    useInt8 = true;
+    return *this;
+}
+
+Sam3ContextBuilder& Sam3ContextBuilder::withInt8NativeCalibration(const std::string& location) {
+    calibrationPath = location;
+    return *this;
+}
+
 Sam3Context Sam3ContextBuilder::build() const {
     Ort::Env env(loggingLevel, applicationName.c_str());
     auto api = Ort::GetApi();
 
     Ort::SessionOptions sessionOptions;
     OrtTensorRTProviderOptionsV2* tensorOptions = nullptr;
+    OrtTensorRTProviderOptionsV2* encoderOptions = nullptr;
     Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&tensorOptions));
+    Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&encoderOptions));
 
     // We have to create an array of the values to feed to the provider options
     // std::string doesn't do! We need const char*
     std::vector<const char*> tensorValueArray;
     for (size_t i = 0; i < tensorRTOptions.size(); ++i) {
         tensorValueArray.push_back(tensorRTOptions[i].c_str());
+    }
+
+    // Mod our array and then convert it to const chars, like above, for encoder
+    std::vector<std::string> encoderTensorValueArrayCpy = tensorRTOptions;
+    if (useInt8) {
+        encoderTensorValueArrayCpy[8] = "1";
+        encoderTensorValueArrayCpy[9] = calibrationPath;
+        encoderTensorValueArrayCpy[10] = calibrationPath != "" ? "1" : "0";
+    }
+    std::vector<const char*> encoderTensorValueArray;
+    for (size_t i = 0; i < encoderTensorValueArrayCpy.size(); ++i) {
+        encoderTensorValueArray.push_back(encoderTensorValueArrayCpy[i].c_str());
     }
 
     Ort::ThrowOnError(
@@ -148,9 +183,14 @@ Sam3Context Sam3ContextBuilder::build() const {
             tensorRTOptionsNames.size()
         )
     );
-    sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
-    sessionOptions.AppendExecutionProvider_CUDA(cudaOptions);
-    api.ReleaseTensorRTProviderOptions(tensorOptions);
+    Ort::ThrowOnError(
+        api.UpdateTensorRTProviderOptions(
+            encoderOptions,
+            tensorRTOptionsNames.data(),
+            encoderTensorValueArray.data(),
+            tensorRTOptionsNames.size()
+        )
+    );
 
     sessionOptions.SetGraphOptimizationLevel(optimisationLevel);
     sessionOptions.SetIntraOpNumThreads(maxCPUThreads);
@@ -164,6 +204,12 @@ Sam3Context Sam3ContextBuilder::build() const {
     if (numBoxesLimit > 0) {
         sessionOptions.AddFreeDimensionOverrideByName("num_boxes", numBoxesLimit);
     }
+
+    // Copy current session options
+    Ort::SessionOptions encoderOptions = sessionOptions;
+    sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
+    sessionOptions.AppendExecutionProvider_CUDA(cudaOptions);
+    api.ReleaseTensorRTProviderOptions(tensorOptions);
 
     // Creates the caching directory so we can save there
     const std::string& cachePath = tensorRTOptions[4];
@@ -179,4 +225,10 @@ Sam3Context Sam3ContextBuilder::build() const {
         Ort::MemoryInfo("Cuda", OrtDeviceAllocator, deviceId, OrtMemTypeDefault),
         Ort::MemoryInfo("Cpu", OrtDeviceAllocator, 0, OrtMemTypeCPUInput)
     );
+}
+
+void Sam3ContextBuilder::applyUniversalSessionOptions(std::vector<Ort::SessionOptions>& sessionOptions) const {
+    for (auto& option : sessionOptions) {
+        
+    }
 }

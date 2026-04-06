@@ -42,6 +42,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<std::string>("sam3_engine_cache_dir", std::getenv("HOME") + std::string("/.cache/detect_humans"));
     this->declare_parameter<int>("max_cpu_threads", 1);
     this->declare_parameter<bool>("use_fp16", true);
+    this->declare_parameter<std::string>("fp8_calibration_table", "");
     this->declare_parameter<int>("cuda_device", 0);
     this->declare_parameter<std::string>("log_level", "error");
     this->declare_parameter<std::string>("sam3_text_encoder_path", shareLocation + "/sam3-onnx/text-encoder-fp16.onnx");
@@ -51,8 +52,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<int64_t>("maximum_vram", 6442450944LL); // TODO: allow input that is more readable?
     this->declare_parameter<int>("cuda_device_id", 0);
     this->declare_parameter<float>("threshold", 0.85f);
-    this->declare_parameter<std::string>("camera_left_topic", "/left_eye_cam");
-    this->declare_parameter<std::string>("camera_right_topic", "/right_eye_cam");
+    this->declare_parameter<std::string>("camera_topic", "/left_eye_cam");
     this->declare_parameter<std::string>("masked_image_topic", "masked_image");
     this->declare_parameter<std::string>("masked_image_frame_id", "image_frame");
 
