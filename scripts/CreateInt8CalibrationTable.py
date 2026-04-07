@@ -6,7 +6,6 @@ import cv2
 import pycuda.driver as cuda
 import pycuda.autoinit
 import tensorrt
-import onnxruntime
 
 class Calibrator(tensorrt.IInt8EntropyCalibrator2):
     def __init__(self, images_dir):
@@ -61,12 +60,6 @@ def create_arg_parser():
 
     return parser
 
-def optimise_model(input_path, output_path):
-    session_options = onnxruntime.SessionOptions()
-    session_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-    session_options.optimized_model_filepath = output_path
-
-    onnxruntime.InferenceSession(input_path, session_options, providers=["CPUExecutionProvider"])
 
 def main():
     args = create_arg_parser().parse_args()
@@ -83,9 +76,7 @@ def main():
     parser = tensorrt.OnnxParser(network, logger)
     config = builder.create_builder_config()
 
-    # Optimise our model so it has the same names as the final result
-    optimise_model(args.encoder, "temp.onnx")
-    with open("temp.onnx", "rb") as f:
+    with open(args.encoder, "rb") as f:
         parser.parse(f.read())
     
     profile = builder.create_optimization_profile()
