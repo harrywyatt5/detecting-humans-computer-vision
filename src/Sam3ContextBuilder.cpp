@@ -206,7 +206,7 @@ Sam3Context Sam3ContextBuilder::build() const {
     }
 
     applySessionOptions(sessionOptions, tensorRTOptions);
-    applySessionOptions(sessionOptions, encoderTensorValueArrayCpy);
+    applySessionOptions(encoderSessionOptions, encoderTensorValueArrayCpy);
 
     // Creates the caching directory so we can save there
     const std::string& cachePath = tensorRTOptions[4];
