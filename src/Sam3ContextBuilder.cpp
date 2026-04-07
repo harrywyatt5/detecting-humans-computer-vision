@@ -154,17 +154,22 @@ void Sam3ContextBuilder::applySessionOptions(Ort::SessionOptions& options, const
     Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&tensorOptions));
 
     // Convert the values to const char* from std::string
-    std::vector<const char*> charTensorRTValues;
-    for (size_t i = 0; i < tensorRTProviderValues.size(); ++i) {
-        charTensorRTValues.push_back(tensorRTProviderValues[i].c_str());
+    std::vector<const char*> names;
+    std::vector<const char*> values;
+    for (size_t i = 0; i < tensorRTOptionsNames.size(); ++i) {
+        // We skip values where we haven't actually entered anything...
+        if (tensorRTProviderValues[i] != "") {
+            names.push_back(tensorRTOptionsNames[i].c_str());
+            values.push_back(tensorRTProviderValues[i].c_str());
+        }
     }
 
     Ort::ThrowOnError(
         api.UpdateTensorRTProviderOptions(
             tensorOptions,
-            tensorRTOptionsNames.data(),
-            charTensorRTValues.data(),
-            tensorRTOptionsNames.size()
+            names.data(),
+            values.data(),
+            names.size()
         )
     );
 

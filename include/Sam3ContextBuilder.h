@@ -10,7 +10,7 @@
 
 class Sam3ContextBuilder {
 private:
-    std::vector<const char*> tensorRTOptionsNames;
+    std::vector<std::string> tensorRTOptionsNames;
     std::vector<std::string> tensorRTOptions;
     OrtCUDAProviderOptions cudaOptions;
 
