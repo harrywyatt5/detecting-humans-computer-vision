@@ -108,7 +108,7 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
                     .withFP16Enabled(true)
                     .withDeviceId(cudaDeviceId)
                     .withEngineCacheDir(this->get_parameter("sam3_engine_cache_dir").as_string())
-                    .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_ALL)
+                    .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_DISABLE_ALL)
                     .withLoggingLevel(loggingLevel.toOrtLoggingLevel())
                     .withMaxGPUMemory(this->get_parameter("maximum_vram").as_int())
                     .withComputeStreamEnabled(true)
