@@ -42,7 +42,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<std::string>("sam3_engine_cache_dir", std::getenv("HOME") + std::string("/.cache/detect_humans"));
     this->declare_parameter<int>("max_cpu_threads", 1);
     this->declare_parameter<bool>("use_fp16", true);
-    this->declare_parameter<std::string>("fp8_calibration_table", "");
+    this->declare_parameter<std::string>("int8_calibration_table", "");
     this->declare_parameter<int>("cuda_device", 0);
     this->declare_parameter<std::string>("log_level", "error");
     this->declare_parameter<std::string>("sam3_text_encoder_path", shareLocation + "/sam3-onnx/text-encoder-fp16.onnx");
@@ -96,7 +96,7 @@ HumanDetectionNode::HumanDetectionNode()
 
 void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
     auto cudaDeviceId = this->get_parameter("cuda_device_id").as_int();
-    auto calibrationTablePath = this->get_parameter("fp8_calibration_table").as_string();
+    auto calibrationTablePath = this->get_parameter("int8_calibration_table").as_string();
     auto builder = Sam3ContextBuilder()
                     .withApplicationName("real_time_humans")
                     .withBatchLimit(1)
@@ -108,7 +108,7 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
                     .withFP16Enabled(true)
                     .withDeviceId(cudaDeviceId)
                     .withEngineCacheDir(this->get_parameter("sam3_engine_cache_dir").as_string())
-                    .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_DISABLE_ALL)
+                    .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC)
                     .withLoggingLevel(loggingLevel.toOrtLoggingLevel())
                     .withMaxGPUMemory(this->get_parameter("maximum_vram").as_int())
                     .withComputeStreamEnabled(true)
