@@ -16,11 +16,13 @@ private:
     std::string decoderPath;
     Ort::Env env;
     Ort::SessionOptions sessionOptions;
+    Ort::SessionOptions encoderSessionOptions;
 public:
     // You're probably looking for Sam3ContextBuilder.h
     Sam3Context(
         Ort::Env environment,
         Ort::SessionOptions sOptions,
+        Ort::SessionOptions encoderOptions,
         int deviceId,
         std::string textEncoderPath,
         std::string visionEncoderPath,
@@ -29,6 +31,7 @@ public:
         Ort::MemoryInfo cpuMemory
     ) : env(std::move(environment)),
         sessionOptions(std::move(sOptions)),
+        encoderSessionOptions(std::move(encoderOptions)),
         deviceId(deviceId),
         textEncoderPath(std::move(textEncoderPath)),
         visionEncoderPath(std::move(visionEncoderPath)),
@@ -38,6 +41,7 @@ public:
 
     const Ort::Env& getEnvironment() const;
     const Ort::SessionOptions& getSessionOptions() const;
+    const Ort::SessionOptions& getEncoderSessionOptions() const;
     const Ort::MemoryInfo& getCudaMemoryInfo() const;
     const Ort::MemoryInfo& getCpuMemoryInfo() const;
     int getDeviceId() const;

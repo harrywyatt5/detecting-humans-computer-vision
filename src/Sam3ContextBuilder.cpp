@@ -141,27 +141,54 @@ Sam3ContextBuilder& Sam3ContextBuilder::withUseInt8ForEncoder(const bool enabled
     return *this;
 }
 
-Sam3ContextBuilder& Sam3ContextBuilder::withInt8NativeCalibration(const std::string& location) {
+Sam3ContextBuilder& Sam3ContextBuilder::withInt8NativeCalibrationTable(const std::string& location) {
     calibrationPath = location;
     return *this;
 }
 
+void Sam3ContextBuilder::applySessionOptions(Ort::SessionOptions& options, const std::vector<std::string>& tensorRTProviderValues) const {
+    auto api = Ort::GetApi();
+    OrtTensorRTProviderOptionsV2* tensorOptions = nullptr;
+    Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&tensorOptions));
+
+    // Convert the values to const char* from std::string
+    std::vector<const char*> charTensorRTValues;
+    for (size_t i = 0; i < tensorRTProviderValues.size(); ++i) {
+        charTensorRTValues.push_back(tensorRTProviderValues[i].c_str());
+    }
+
+    Ort::ThrowOnError(
+        api.UpdateTensorRTProviderOptions(
+            tensorOptions,
+            tensorRTOptionsNames.data(),
+            charTensorRTValues.data(),
+            tensorRTOptionsNames.size()
+        )
+    );
+
+    options.SetGraphOptimizationLevel(optimisationLevel);
+    options.SetIntraOpNumThreads(maxCPUThreads);
+    options.SetInterOpNumThreads(maxCPUThreads);
+
+    // 0 means that batch is unbounded, and can be any value
+    if (batchLimit > 0) {
+        options.AddFreeDimensionOverrideByName("batch", batchLimit);
+    }
+
+    if (numBoxesLimit > 0) {
+        options.AddFreeDimensionOverrideByName("num_boxes", numBoxesLimit);
+    }
+
+    options.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
+    options.AppendExecutionProvider_CUDA(cudaOptions);
+    api.ReleaseTensorRTProviderOptions(tensorOptions);
+}
+
 Sam3Context Sam3ContextBuilder::build() const {
     Ort::Env env(loggingLevel, applicationName.c_str());
-    auto api = Ort::GetApi();
 
     Ort::SessionOptions sessionOptions;
-    OrtTensorRTProviderOptionsV2* tensorOptions = nullptr;
-    OrtTensorRTProviderOptionsV2* encoderOptions = nullptr;
-    Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&tensorOptions));
-    Ort::ThrowOnError(api.CreateTensorRTProviderOptions(&encoderOptions));
-
-    // We have to create an array of the values to feed to the provider options
-    // std::string doesn't do! We need const char*
-    std::vector<const char*> tensorValueArray;
-    for (size_t i = 0; i < tensorRTOptions.size(); ++i) {
-        tensorValueArray.push_back(tensorRTOptions[i].c_str());
-    }
+    Ort::SessionOptions encoderSessionOptions;
 
     // Mod our array and then convert it to const chars, like above, for encoder
     std::vector<std::string> encoderTensorValueArrayCpy = tensorRTOptions;
@@ -170,46 +197,9 @@ Sam3Context Sam3ContextBuilder::build() const {
         encoderTensorValueArrayCpy[9] = calibrationPath;
         encoderTensorValueArrayCpy[10] = calibrationPath != "" ? "1" : "0";
     }
-    std::vector<const char*> encoderTensorValueArray;
-    for (size_t i = 0; i < encoderTensorValueArrayCpy.size(); ++i) {
-        encoderTensorValueArray.push_back(encoderTensorValueArrayCpy[i].c_str());
-    }
 
-    Ort::ThrowOnError(
-        api.UpdateTensorRTProviderOptions(
-            tensorOptions,
-            tensorRTOptionsNames.data(),
-            tensorValueArray.data(),
-            tensorRTOptionsNames.size()
-        )
-    );
-    Ort::ThrowOnError(
-        api.UpdateTensorRTProviderOptions(
-            encoderOptions,
-            tensorRTOptionsNames.data(),
-            encoderTensorValueArray.data(),
-            tensorRTOptionsNames.size()
-        )
-    );
-
-    sessionOptions.SetGraphOptimizationLevel(optimisationLevel);
-    sessionOptions.SetIntraOpNumThreads(maxCPUThreads);
-    sessionOptions.SetInterOpNumThreads(maxCPUThreads);
-
-    // 0 means that batch is unbounded, and can be any value
-    if (batchLimit > 0) {
-        sessionOptions.AddFreeDimensionOverrideByName("batch", batchLimit);
-    }
-
-    if (numBoxesLimit > 0) {
-        sessionOptions.AddFreeDimensionOverrideByName("num_boxes", numBoxesLimit);
-    }
-
-    // Copy current session options
-    Ort::SessionOptions encoderOptions = sessionOptions;
-    sessionOptions.AppendExecutionProvider_TensorRT_V2(*tensorOptions);
-    sessionOptions.AppendExecutionProvider_CUDA(cudaOptions);
-    api.ReleaseTensorRTProviderOptions(tensorOptions);
+    applySessionOptions(sessionOptions, tensorRTOptions);
+    applySessionOptions(sessionOptions, encoderTensorValueArrayCpy);
 
     // Creates the caching directory so we can save there
     const std::string& cachePath = tensorRTOptions[4];
@@ -218,6 +208,7 @@ Sam3Context Sam3ContextBuilder::build() const {
     return Sam3Context(
         std::move(env),
         std::move(sessionOptions),
+        std::move(encoderSessionOptions),
         deviceId,
         std::move(textEncoderPath),
         std::move(visionEncoderPath),
@@ -225,10 +216,4 @@ Sam3Context Sam3ContextBuilder::build() const {
         Ort::MemoryInfo("Cuda", OrtDeviceAllocator, deviceId, OrtMemTypeDefault),
         Ort::MemoryInfo("Cpu", OrtDeviceAllocator, 0, OrtMemTypeCPUInput)
     );
-}
-
-void Sam3ContextBuilder::applyUniversalSessionOptions(std::vector<Ort::SessionOptions>& sessionOptions) const {
-    for (auto& option : sessionOptions) {
-        
-    }
 }

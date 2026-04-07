@@ -11,6 +11,10 @@ const Ort::SessionOptions& Sam3Context::getSessionOptions() const {
     return sessionOptions;
 }
 
+const Ort::SessionOptions& Sam3Context::getEncoderSessionOptions() const {
+    return encoderSessionOptions;
+}
+
 const Ort::MemoryInfo& Sam3Context::getCudaMemoryInfo() const {
     return cudaMemoryInfo;
 }

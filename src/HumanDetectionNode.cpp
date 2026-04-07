@@ -96,6 +96,7 @@ HumanDetectionNode::HumanDetectionNode()
 
 void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
     auto cudaDeviceId = this->get_parameter("cuda_device_id").as_int();
+    auto calibrationTablePath = this->get_parameter("fp8_calibration_table").as_string();
     auto builder = Sam3ContextBuilder()
                     .withApplicationName("real_time_humans")
                     .withBatchLimit(1)
@@ -113,6 +114,13 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
                     .withComputeStreamEnabled(true)
                     .withComputeStream(CudaDevicesSingleton::getInstance()->getForId(cudaDeviceId)->getCudaStream())
                     .withCudaGraphsEnabled(false);
+    
+    if (calibrationTablePath != "") {
+        RCLCPP_INFO(this->get_logger(), "Int8 will be enabled");
+        builder.withUseInt8ForEncoder(true)
+            .withInt8NativeCalibrationTable(calibrationTablePath);
+    }
+
     samContext = std::make_unique<Sam3Context>(builder.build());
     samModel = std::make_unique<PersistentSam3Model>(PersistentSam3Model::createSam3Model(*samContext));
 }

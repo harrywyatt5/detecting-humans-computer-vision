@@ -16,7 +16,7 @@ std::unique_ptr<VisionEncoderSession> VisionEncoderSessionFactory::createSession
     std::shared_ptr<CudaTensor<float>> fpnFeat2Tensor = CudaTensor<float>::createCudaTensor({1, 256, 72, 72}, samContext);
     std::shared_ptr<CudaTensor<float>> fpnPos2Tensor = CudaTensor<float>::createCudaTensor({1, 256, 72, 72}, samContext);
 
-    auto session = std::make_unique<Ort::Session>(samContext.getEnvironment(), samContext.getVisionEncoderPath().c_str(), samContext.getSessionOptions());
+    auto session = std::make_unique<Ort::Session>(samContext.getEnvironment(), samContext.getVisionEncoderPath().c_str(), samContext.getEncoderSessionOptions());
     BindingBlueprint visionEncodingBindings;
 
     visionEncodingBindings.addBinding(Binding("images", imageTensor, Binding::BindingType::INPUT));

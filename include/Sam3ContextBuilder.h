@@ -27,7 +27,7 @@ private:
     OrtLoggingLevel loggingLevel;
     GraphOptimizationLevel optimisationLevel;
 
-    void applyUniversalSessionOptions(std::vector<Ort::SessionOptions>& sessionOptions) const;
+    void applySessionOptions(Ort::SessionOptions& sessionOptions, const std::vector<std::string>& tensorRTProviderValues) const;
 public:
     Sam3ContextBuilder();
 
@@ -48,7 +48,7 @@ public:
     Sam3ContextBuilder& withComputeStreamEnabled(const bool enabled);
     Sam3ContextBuilder& withComputeStream(cudaStream_t& computeStream);
     Sam3ContextBuilder& withUseInt8ForEncoder(const bool enabled);
-    Sam3ContextBuilder& withInt8NativeCalibration(const std::string& location);
+    Sam3ContextBuilder& withInt8NativeCalibrationTable(const std::string& location);
     Sam3Context build() const;
 
     ~Sam3ContextBuilder() = default;
