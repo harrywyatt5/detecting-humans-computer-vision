@@ -61,11 +61,11 @@ HumanDetectionNode::HumanDetectionNode()
     subQosProfile.keep_last(1);
     subQosProfile.best_effort();
     subQosProfile.durability_volatile();
-    leftCameraSub = std::make_shared<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>>(
+    cameraSub = std::make_shared<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>>(
         this,
-        this->get_parameter("camera_left_topic").as_string(),
+        this->get_parameter("camera_topic").as_string(),
         nitros::nitros_image_rgb8_t::supported_type_name,
-        std::bind(&HumanDetectionNode::leftImageCallback, this, std::placeholders::_1),
+        std::bind(&HumanDetectionNode::cameraImageCallback, this, std::placeholders::_1),
         nitros::NitrosDiagnosticsConfig{},
         subQosProfile
     );
@@ -142,7 +142,7 @@ void HumanDetectionNode::configureCameraImageConversion(const nitros::NitrosImag
     }
 }
 
-void HumanDetectionNode::leftImageCallback(const nitros::NitrosImageView& msg) {
+void HumanDetectionNode::cameraImageCallback(const nitros::NitrosImageView& msg) {
     if (!isFullyConfigured) {
         configureNodeFromInitialImage(msg);
         RCLCPP_INFO(this->get_logger(), "Configured environment using initial frame correctly");

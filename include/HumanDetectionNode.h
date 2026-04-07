@@ -32,11 +32,11 @@ private:
     bool isFullyConfigured;
 
     // ROS2 data
-    std::shared_ptr<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>> leftCameraSub;
+    std::shared_ptr<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>> cameraSub;
     std::shared_ptr<nitros::ManagedNitrosPublisher<nitros::NitrosImage>> maskedImagePub;
 
     // Callbacks
-    void leftImageCallback(const nitros::NitrosImageView& msg);
+    void cameraImageCallback(const nitros::NitrosImageView& msg);
 
     // Helpers
     void configureSam3Model(const LoggingLevel& loggingLevel);
