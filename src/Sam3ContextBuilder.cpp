@@ -137,11 +137,13 @@ Sam3ContextBuilder& Sam3ContextBuilder::withUseInt8ForEncoder(const bool enabled
     // For this property as well as the calibration path, we store these settings in the builder
     // and then enact them when actually building. Saves us having to store two lists of property names
     // and vales for making the SessionOptions
-    useInt8 = true;
+    useInt8 = enabled;
     return *this;
 }
 
 Sam3ContextBuilder& Sam3ContextBuilder::withInt8NativeCalibrationTable(const std::string& location) {
+    // Force enable using int8 if a calibration table is provided
+    withUseInt8ForEncoder(true);
     calibrationPath = location;
     return *this;
 }
