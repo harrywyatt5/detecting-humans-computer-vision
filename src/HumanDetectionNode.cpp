@@ -168,7 +168,7 @@ void HumanDetectionNode::configureNodeFromInitialImage(const nitros::NitrosImage
     int imageHeight = (int)image.GetHeight();
     int imageWidth = (int)image.GetWidth();
 
-    imageInput = std::make_shared<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 1008, 1008, *samContext));
+    imageInput = std::make_shared<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 504, 504, *samContext));
     auto builder = TrackAndCreateImageProcessorBuilder();
     builder
         .withDeviceIdFromContext(*samContext)

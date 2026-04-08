@@ -12,7 +12,7 @@
 #include <opencv2/core/types.hpp>
 
 TrackAndCreateImageProcessorBuilder::TrackAndCreateImageProcessorBuilder() 
-    : finalX(1280), finalY(720), intermediateX(1008), intermediateY(1008),
+    : finalX(1280), finalY(720), intermediateX(504), intermediateY(504),
         masksCount(200), threshold(0.85f), minimumFrames(5),
         sampler(nullptr), textProvider(nullptr), devId(0) {}
 

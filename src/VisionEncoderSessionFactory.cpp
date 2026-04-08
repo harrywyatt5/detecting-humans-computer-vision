@@ -67,6 +67,7 @@ std::unique_ptr<VisionEncoderSession> VisionEncoderSessionFactory::createSession
     // When we used the default exports, we actually had a fpn_pos_2 here. We don't generate this anymore and instead manually
     // calculate the static values on the CPU
     // visionEncodingBindings.addBinding(Binding("fpn_pos_2", fpnPos2Tensor, Binding::BindingType::OUTPUT));
+    fpnPos2Tensor->copyToBuffer(createPositionVector(36, 36, 256));
 
     // When the unique pointers are moved into VisionEncoderSession, they will be upgraded to shared_ptr so
     // they can be shared with other objects
