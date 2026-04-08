@@ -99,8 +99,6 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
     auto calibrationTablePath = this->get_parameter("int8_calibration_table").as_string();
     auto builder = Sam3ContextBuilder()
                     .withApplicationName("real_time_humans")
-                    .withBatchLimit(1)
-                    .withNumBoxesLimit(1)
                     .withCPUThreadMax(1)
                     .withTextEncoderPath(this->get_parameter("sam3_text_encoder_path").as_string())
                     .withVisionEncoderPath(this->get_parameter("sam3_vision_encoder_path").as_string())
@@ -108,7 +106,7 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
                     .withFP16Enabled(true)
                     .withDeviceId(cudaDeviceId)
                     .withEngineCacheDir(this->get_parameter("sam3_engine_cache_dir").as_string())
-                    .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC)
+                    .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_ALL)
                     .withLoggingLevel(loggingLevel.toOrtLoggingLevel())
                     .withMaxGPUMemory(this->get_parameter("maximum_vram").as_int())
                     .withComputeStreamEnabled(true)

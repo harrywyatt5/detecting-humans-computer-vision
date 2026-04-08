@@ -16,8 +16,8 @@ Sam3ContextBuilder::Sam3ContextBuilder() {
     deviceId = 0;
     cudaOptions.device_id = 0;
     maxCPUThreads = 1;
-    batchLimit = 1;
-    numBoxesLimit = 1;
+    batchLimit = -1;
+    numBoxesLimit = -1;
     useInt8 = false;
     calibrationPath = "";
 
