@@ -175,8 +175,8 @@ void HumanDetectionNode::configureNodeFromInitialImage(const nitros::NitrosImage
         .withFrameSampler(frameSampler)
         .withImageHeight(imageHeight)
         .withImageWidth(imageWidth)
-        .withIntermediateHeight(288)
-        .withIntermediateWidth(288)
+        .withIntermediateHeight(144)
+        .withIntermediateWidth(144)
         .withMasksCount(200)
         .withMinimumFramesToSample(10)
         .withThreshold(threshold);
