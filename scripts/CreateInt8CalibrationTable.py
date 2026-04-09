@@ -80,8 +80,8 @@ def main():
     config = builder.create_builder_config()
 
     opts = onnxruntime.SessionOptions()
-    onnxruntime.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_BASIC
-    onnxruntime.optimized_model_filepath = "temp.onnx"
+    opts.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_BASIC
+    opts.optimized_model_filepath = "temp.onnx"
     onnxruntime.InferenceSession(args.encoder, sess_options=opts, providers=["CPUExecutionProvider"])
 
     with open("temp.onnx", "rb") as f:
