@@ -27,9 +27,10 @@ private:
     std::shared_ptr<FrameSampler> frameSampler;
     std::optional<cv::ColorConversionCodes> inputConversion;
     // Any parameters which are needed in the main runtime loop, we cache here
-    std::string imageFrameId; 
+    std::string imageFrameId;
     float threshold;
     bool isFullyConfigured;
+    int intermediateImageSize;
 
     // ROS2 data
     std::shared_ptr<nitros::ManagedNitrosSubscriber<nitros::NitrosImageView>> cameraSub;

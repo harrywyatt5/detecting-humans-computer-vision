@@ -49,13 +49,14 @@ std::vector<float> VisionEncoderSessionFactory::createPositionVector(int height,
     return positionVector;
 }
 
-std::unique_ptr<VisionEncoderSession> VisionEncoderSessionFactory::createSession(const Sam3Context& samContext) const {
-    std::shared_ptr<CudaTensor<float>> imageTensor = CudaTensor<float>::createCudaTensor({1, 3, 504, 504}, samContext);
+std::unique_ptr<VisionEncoderSession> VisionEncoderSessionFactory::createSession(int intermediateHeight, int intermediateWidth, const Sam3Context& samContext) const {
+    std::shared_ptr<CudaTensor<float>> imageTensor = CudaTensor<float>::createCudaTensor({1, 3, intermediateHeight, intermediateWidth}, samContext);
 
-    std::shared_ptr<CudaTensor<float>> fpnFeat0Tensor = CudaTensor<float>::createCudaTensor({1, 256, 144, 144}, samContext);
-    std::shared_ptr<CudaTensor<float>> fpnFeat1Tensor = CudaTensor<float>::createCudaTensor({1, 256, 72, 72}, samContext);
-    std::shared_ptr<CudaTensor<float>> fpnFeat2Tensor = CudaTensor<float>::createCudaTensor({1, 256, 36, 36}, samContext);
-    std::shared_ptr<CudaTensor<float>> fpnPos2Tensor = CudaTensor<float>::createCudaTensor({1, 256, 36, 36}, samContext);
+    // divide by 3.57
+    std::shared_ptr<CudaTensor<float>> fpnFeat0Tensor = CudaTensor<float>::createCudaTensor({1, 256, (intermediateHeight * 2) / 7, (intermediateWidth * 2) / 7}, samContext);
+    std::shared_ptr<CudaTensor<float>> fpnFeat1Tensor = CudaTensor<float>::createCudaTensor({1, 256, intermediateHeight / 7, intermediateWidth / 7}, samContext);
+    std::shared_ptr<CudaTensor<float>> fpnFeat2Tensor = CudaTensor<float>::createCudaTensor({1, 256, intermediateHeight / 14, intermediateWidth / 14}, samContext);
+    std::shared_ptr<CudaTensor<float>> fpnPos2Tensor = CudaTensor<float>::createCudaTensor({1, 256, intermediateHeight / 14, intermediateWidth / 14}, samContext);
 
     auto session = std::make_unique<Ort::Session>(samContext.getEnvironment(), samContext.getVisionEncoderPath().c_str(), samContext.getEncoderSessionOptions());
     BindingBlueprint visionEncodingBindings;
@@ -67,7 +68,7 @@ std::unique_ptr<VisionEncoderSession> VisionEncoderSessionFactory::createSession
     // When we used the default exports, we actually had a fpn_pos_2 here. We don't generate this anymore and instead manually
     // calculate the static values on the CPU
     // visionEncodingBindings.addBinding(Binding("fpn_pos_2", fpnPos2Tensor, Binding::BindingType::OUTPUT));
-    fpnPos2Tensor->copyToBuffer(createPositionVector(36, 36, 256));
+    fpnPos2Tensor->copyToBuffer(createPositionVector(intermediateHeight / 14, intermediateWidth / 14, 256));
 
     // When the unique pointers are moved into VisionEncoderSession, they will be upgraded to shared_ptr so
     // they can be shared with other objects

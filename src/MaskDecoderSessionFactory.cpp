@@ -32,7 +32,10 @@ std::unique_ptr<MaskDecoderSession> MaskDecoderSessionFactory::createSession(con
     inputBoxLabels->copyToBuffer(std::vector<int64_t>(1, -10));
 
     // Outputs
-    std::shared_ptr<CudaTensor<float>> predMasks = CudaTensor<float>::createCudaTensor({1, 200, 144, 144}, samContext);
+    // the fpn_feat_0 tensor tell us how big our predMask has to be
+    int predMaskHeight = fpnFeat0->getTensorShape()[2];
+    int predMaskWidth = fpnFeat0->getTensorShape()[3];
+    std::shared_ptr<CudaTensor<float>> predMasks = CudaTensor<float>::createCudaTensor({1, 200, predMaskHeight, predMaskWidth}, samContext);
     std::shared_ptr<CPUTensor<float>> predBoxes = CPUTensor<float>::createCPUTensor({1, 200, 4}, samContext);
     std::shared_ptr<CPUTensor<float>> predLogits = CPUTensor<float>::createCPUTensor({1, 200}, samContext);
     std::shared_ptr<CPUTensor<float>> predLogic = CPUTensor<float>::createCPUTensor({1, 1}, samContext);

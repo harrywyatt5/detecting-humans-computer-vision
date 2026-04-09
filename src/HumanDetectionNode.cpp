@@ -50,6 +50,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<std::string>("sam3_decoder_path", shareLocation + "/sam3-onnx/geo-encoder-mask-decoder-fp16.onnx");
     this->declare_parameter<std::string>("encoded_prompt_path", shareLocation + "/language.token");
     this->declare_parameter<int64_t>("maximum_vram", 6442450944LL); // TODO: allow input that is more readable?
+    this->declare_parameter<int>("sam3_image_input_size", 504);
     this->declare_parameter<int>("cuda_device_id", 0);
     this->declare_parameter<float>("threshold", 0.85f);
     this->declare_parameter<std::string>("camera_topic", "/left_eye_cam");
@@ -87,6 +88,7 @@ HumanDetectionNode::HumanDetectionNode()
     imageFrameId = this->get_parameter("masked_image_frame_id").as_string();
     auto loggingLevel = LoggingLevel::fromString(this->get_parameter("log_level").as_string(), true);
     promptToken = std::make_shared<LanguageToken>(LanguageToken::createFromFile(this->get_parameter("encoded_prompt_path").as_string()));
+    intermediateImageSize = this->get_parameter("sam3_image_input_size").as_int();
     RCLCPP_INFO(this->get_logger(), "About to load Sam3Model...");
     configureSam3Model(loggingLevel);
     RCLCPP_INFO(this->get_logger(), "Sam3 model was loaded. Compiling engine for language prompt and then will be ready!");
@@ -168,15 +170,23 @@ void HumanDetectionNode::configureNodeFromInitialImage(const nitros::NitrosImage
     int imageHeight = (int)image.GetHeight();
     int imageWidth = (int)image.GetWidth();
 
-    imageInput = std::make_shared<PersistentImageInput>(PersistentImageInputFactory().createPersistentImageInput(imageWidth, imageHeight, 504, 504, *samContext));
+    imageInput = std::make_shared<PersistentImageInput>(
+        PersistentImageInputFactory().createPersistentImageInput(
+            imageWidth,
+            imageHeight,
+            intermediateImageSize,
+            intermediateImageSize,
+            *samContext
+        )
+    );
     auto builder = TrackAndCreateImageProcessorBuilder();
     builder
         .withDeviceIdFromContext(*samContext)
         .withFrameSampler(frameSampler)
         .withImageHeight(imageHeight)
         .withImageWidth(imageWidth)
-        .withIntermediateHeight(144)
-        .withIntermediateWidth(144)
+        .withIntermediateHeight((intermediateImageSize * 2) / 7)
+        .withIntermediateWidth((intermediateImageSize * 2) / 7)
         .withMasksCount(200)
         .withMinimumFramesToSample(10)
         .withThreshold(threshold);
