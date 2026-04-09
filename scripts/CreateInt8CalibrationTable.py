@@ -85,6 +85,7 @@ def main():
     profile.set_shape("images", (1, 3, image_size, image_size), (1, 3, image_size, image_size), (1, 3, image_size, image_size))
     config.add_optimization_profile(profile)
     config.set_flag(tensorrt.BuilderFlag.INT8)
+    config.set_flag(tensorrt.BuilderFlag.FP16)
     config.int8_calibrator = Calibrator(args.path, image_size)
 
     print("Starting to build int8 cache")
