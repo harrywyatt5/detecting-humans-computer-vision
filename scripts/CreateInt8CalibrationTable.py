@@ -82,7 +82,7 @@ def main():
     opts = onnxruntime.SessionOptions()
     onnxruntime.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_BASIC
     onnxruntime.optimized_model_filepath = "temp.onnx"
-    ort.InferenceSession(args.encoder, sess_options=opts, providers=["CPUExecutionProvider"])
+    onnxruntime.InferenceSession(args.encoder, sess_options=opts, providers=["CPUExecutionProvider"])
 
     with open("temp.onnx", "rb") as f:
         parser.parse(f.read())
