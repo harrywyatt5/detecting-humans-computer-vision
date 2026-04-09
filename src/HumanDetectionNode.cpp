@@ -118,7 +118,10 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
     if (calibrationTablePath != "") {
         RCLCPP_INFO(this->get_logger(), "Int8 will be enabled");
         builder.withUseInt8ForEncoder(true)
-            .withInt8NativeCalibrationTable(calibrationTablePath);
+            .withInt8NativeCalibrationTable(calibrationTablePath)
+            // ENABLE_ALL might insert new nodes we didn't expect when calibrating, so
+            // we downgrade the optimisation to basic when a table is used
+            .withGraphOptimistionLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
     }
 
     samContext = std::make_unique<Sam3Context>(builder.build());
