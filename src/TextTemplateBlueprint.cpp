@@ -35,7 +35,13 @@ TextTemplateBlueprint TextTemplateBlueprint::createBlueprintFromRect(
         x = rect.br_x() * finalWidth;
         y = rect.br_y() * finalHeight;
 
-        if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) std::cerr << "Label for bounding box might be out of bounds\n";
+        // If we can't put in on the bottom either, then let's try and put it in the middle of the bounding box
+        if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) {
+            x = ((rect.tl_x() + rect.br_x()) / 2) * finalWidth;
+            y = ((rect.tl_y() + rect.br_y()) / 2) * finalHeight;
+
+            if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) std::cerr << "Label for bounding box might be out of bounds\n";
+        }
     }
 
     return TextTemplateBlueprint(x, y, textTemplate);

@@ -82,9 +82,9 @@ TrackAndCreateImageProcessor TrackAndCreateImageProcessorBuilder::build() {
         textProvider = std::make_unique<TextProviderImpl>(
             256,
             devId,
-            (int)((float)finalX * 0.03f),
-            (int)((float)finalY * 0.03f),
-            TextConfig(cv::FONT_HERSHEY_SIMPLEX, cv::Scalar(255, 0, 0, 255), 2, 1.0f)
+            (int)((float)finalX * 0.06f),
+            (int)((float)finalY * 0.06f),
+            TextConfig(cv::FONT_HERSHEY_SIMPLEX, cv::Scalar(255, 0, 0, 255), 4, 1.0f)
         );
     }
 

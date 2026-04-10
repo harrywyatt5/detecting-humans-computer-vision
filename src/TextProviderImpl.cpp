@@ -26,7 +26,7 @@ void TextProviderImpl::createNumberTemplates(int count) {
         // Find the side we gotta divide by the most on and use that to scale our text
         double textScale = std::min((double)frameY / (double)textSize.height, (double)frameX / (double)textSize.width);
 
-        cv::Mat newImage(frameY, frameX, CV_8UC4, cv::Scalar(0, 0, 0, 0));
+        cv::Mat newImage(frameY, frameX, CV_8UC4, cv::Scalar(0, 0, 0, 255));
         cv::putText(
             newImage,
             text,
