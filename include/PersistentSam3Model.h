@@ -38,5 +38,5 @@ public:
     void registerOutputProcessor(std::shared_ptr<OutputProcessor> outputProcessor);
     void processOutput();
 
-    static PersistentSam3Model createSam3Model(const Sam3Context& context);
+    static PersistentSam3Model createSam3Model(int modelSize, const Sam3Context& context);
 };

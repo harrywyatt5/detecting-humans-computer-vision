@@ -125,7 +125,7 @@ void HumanDetectionNode::configureSam3Model(const LoggingLevel& loggingLevel) {
     }
 
     samContext = std::make_unique<Sam3Context>(builder.build());
-    samModel = std::make_unique<PersistentSam3Model>(PersistentSam3Model::createSam3Model(*samContext));
+    samModel = std::make_unique<PersistentSam3Model>(PersistentSam3Model::createSam3Model(intermediateImageSize, *samContext));
 }
 
 void HumanDetectionNode::mountPrompt() {

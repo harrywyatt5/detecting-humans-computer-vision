@@ -69,9 +69,9 @@ void PersistentSam3Model::throwIfNoOutput() const {
   }
 }
 
-PersistentSam3Model PersistentSam3Model::createSam3Model(const Sam3Context& context) {
+PersistentSam3Model PersistentSam3Model::createSam3Model(int modelSize, const Sam3Context& context) {
   auto textEncoderSession = TextEncoderSessionFactory().createSession(context);
-  auto visionEncoderSession = VisionEncoderSessionFactory().createSession(context);
+  auto visionEncoderSession = VisionEncoderSessionFactory().createSession(modelSize, modelSize, context);
   auto decoderSession = MaskDecoderSessionFactory().createSession(context, *textEncoderSession, *visionEncoderSession);
   return PersistentSam3Model(
     std::move(textEncoderSession),
