@@ -29,6 +29,7 @@ private:
     // Any parameters which are needed in the main runtime loop, we cache here
     std::string imageFrameId;
     float threshold;
+    float overlayPercentage;
     bool isFullyConfigured;
     int intermediateImageSize;
 

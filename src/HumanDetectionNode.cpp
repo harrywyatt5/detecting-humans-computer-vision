@@ -34,6 +34,7 @@ HumanDetectionNode::HumanDetectionNode()
         trackCreateProcessor(nullptr),
         frameSampler(std::make_shared<FrameSampler>()),
         threshold(0.0f),
+        overlayPercentage(0.3f),
         isFullyConfigured(false),
         Node("human_detection_node")
 {
@@ -53,6 +54,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<int>("sam3_image_input_size", 504);
     this->declare_parameter<int>("cuda_device_id", 0);
     this->declare_parameter<float>("threshold", 0.85f);
+    this->declare_parameter<float>("overlay_percentage", 0.3);
     this->declare_parameter<std::string>("camera_topic", "/left_eye_cam");
     this->declare_parameter<std::string>("masked_image_topic", "masked_image");
     this->declare_parameter<std::string>("masked_image_frame_id", "image_frame");
@@ -85,6 +87,7 @@ HumanDetectionNode::HumanDetectionNode()
 
     // Configurables
     threshold = this->get_parameter("threshold").as_double();
+    overlayPercentage = this->get_parameter("overlay_percentage").as_double();
     imageFrameId = this->get_parameter("masked_image_frame_id").as_string();
     auto loggingLevel = LoggingLevel::fromString(this->get_parameter("log_level").as_string(), true);
     promptToken = std::make_shared<LanguageToken>(LanguageToken::createFromFile(this->get_parameter("encoded_prompt_path").as_string()));
@@ -160,7 +163,7 @@ void HumanDetectionNode::cameraImageCallback(const nitros::NitrosImageView& msg)
     samModel->detect(imageInput);
     samModel->processOutput();
 
-    trackCreateProcessor->outputMaskedImage(imageInput->getGpuImage(), threshold);
+    trackCreateProcessor->outputMaskedImage(imageInput->getGpuImage(), overlayPercentage);
 
     auto finalMsg = imageInput->getGpuImage().createNitrosImageMessage(imageFrameId, this->get_clock()->now());
     frameSampler->toggleFrame(true);
