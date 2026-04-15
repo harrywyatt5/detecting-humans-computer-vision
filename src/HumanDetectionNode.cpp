@@ -9,6 +9,8 @@
 #include "PersistentImageInputFactory.h"
 #include "TrackAndCreateImageProcessor.h"
 #include "TrackAndCreateImageProcessorBuilder.h"
+#include "TextProvider.h"
+#include "TextProviderImpl.h"
 #include <rclcpp/rclcpp.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <onnxruntime_cxx_api.h>
@@ -44,7 +46,6 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<int>("max_cpu_threads", 1);
     this->declare_parameter<bool>("use_fp16", true);
     this->declare_parameter<std::string>("int8_calibration_table", "");
-    this->declare_parameter<int>("cuda_device", 0);
     this->declare_parameter<std::string>("log_level", "error");
     this->declare_parameter<std::string>("sam3_text_encoder_path", shareLocation + "/sam3-onnx/text-encoder-fp16.onnx");
     this->declare_parameter<std::string>("sam3_vision_encoder_path", shareLocation + "/sam3-onnx/vision-encoder-fp16.onnx");
@@ -55,6 +56,7 @@ HumanDetectionNode::HumanDetectionNode()
     this->declare_parameter<int>("cuda_device_id", 0);
     this->declare_parameter<float>("threshold", 0.85f);
     this->declare_parameter<float>("overlay_percentage", 0.3);
+    this->declare_parameter<float>("text_box_size", 0.03);
     this->declare_parameter<std::string>("camera_topic", "/left_eye_cam");
     this->declare_parameter<std::string>("masked_image_topic", "masked_image");
     this->declare_parameter<std::string>("masked_image_frame_id", "image_frame");
@@ -185,6 +187,15 @@ void HumanDetectionNode::configureNodeFromInitialImage(const nitros::NitrosImage
             *samContext
         )
     );
+    float textBoxScale = this->get_parameter("text_box_size").as_double();
+    int textBoxSize = imageWidth > imageHeight ? imageWidth * textBoxScale : imageHeight * textBoxScale;
+    std::unique_ptr<TextProvider> textProvider = std::make_unique<TextProviderImpl>(
+        500, 
+        this->get_parameter("cuda_device_id").as_int(),
+        textBoxSize,
+        textBoxSize,
+        TextConfig(cv::FONT_HERSHEY_SIMPLEX, cv::Scalar(255, 0, 0, 255), 4, 1.0f)
+    );
     auto builder = TrackAndCreateImageProcessorBuilder();
     builder
         .withDeviceIdFromContext(*samContext)
@@ -195,6 +206,7 @@ void HumanDetectionNode::configureNodeFromInitialImage(const nitros::NitrosImage
         .withIntermediateWidth((intermediateImageSize * 2) / 7)
         .withMasksCount(200)
         .withMinimumFramesToSample(10)
+        .withTextProvider(std::move(textProvider))
         .withThreshold(threshold);
     trackCreateProcessor = std::make_unique<TrackAndCreateImageProcessor>(builder.build());
 
