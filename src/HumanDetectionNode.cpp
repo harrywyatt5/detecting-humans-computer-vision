@@ -192,8 +192,8 @@ void HumanDetectionNode::configureNodeFromInitialImage(const nitros::NitrosImage
     std::unique_ptr<TextProvider> textProvider = std::make_unique<TextProviderImpl>(
         500, 
         this->get_parameter("cuda_device_id").as_int(),
-        textBoxSize,
-        textBoxSize,
+        imageWidth * textBoxScale,
+        imageHeight * textBoxScale,
         TextConfig(cv::FONT_HERSHEY_SIMPLEX, cv::Scalar(255, 0, 0, 255), 4, 1.0f)
     );
     auto builder = TrackAndCreateImageProcessorBuilder();
