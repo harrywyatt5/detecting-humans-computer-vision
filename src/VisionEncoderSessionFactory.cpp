@@ -15,7 +15,7 @@ std::vector<float> VisionEncoderSessionFactory::createPositionVector(int height,
     // Mostly just translated from here: https://github.com/harrywyatt5/usls/blob/main/scripts/sam3-image/export_v2.py#L13-L51
     std::vector<float> positionVector(channels * height * width, 0.0f);
     int numFeats = channels / 2;
-    float temp = 1000.0f;
+    float temp = 10000.0f;
     float scale = 2.0f * M_PI;
     float eps = 1e-6;
 
