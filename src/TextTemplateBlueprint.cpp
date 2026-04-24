@@ -27,20 +27,29 @@ TextTemplateBlueprint TextTemplateBlueprint::createBlueprintFromRect(
 ) {
     auto textTemplate = textProvider->getTextForNumber(id);
 
-    int x = rect.tl_x() * finalWidth;
-    int y = (rect.tl_y() * finalHeight) - (float)textTemplate->rows;
+    int textW = textTemplate->cols;
+    int textH = textTemplate->rows;
 
-    // If we're out of bounds, try appending the template to the bottom of the bounding box
-    if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) {
-        x = rect.br_x() * finalWidth;
+    int x = rect.tl_x() * finalWidth;
+    int y = (rect.tl_y() * finalHeight) - textH;
+
+    // If we're out of bounds (accounting for the text's width/height), try appending the template to the bottom of the bounding box
+    if (x < 0 || x + textW > finalWidth || y < 0 || y + textH > finalHeight) {
+        // Aligned to the left, appended to the bottom
+        x = rect.tl_x() * finalWidth; 
         y = rect.br_y() * finalHeight;
 
-        // If we can't put in on the bottom either, then let's try and put it in the middle of the bounding box
-        if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) {
-            x = ((rect.tl_x() + rect.br_x()) / 2) * finalWidth;
-            y = ((rect.tl_y() + rect.br_y()) / 2) * finalHeight;
+        // If we can't put it on the bottom either, then let's try and put it in the middle of the bounding box
+        if (x < 0 || x + textW > finalWidth || y < 0 || y + textH > finalHeight) {
+            x = ((rect.tl_x() + rect.br_x()) / 2) * finalWidth - (textW / 2);
+            y = ((rect.tl_y() + rect.br_y()) / 2) * finalHeight - (textH / 2);
 
-            if (x < 0 || x > finalWidth || y < 0 || y > finalHeight) std::cerr << "Label for bounding box might be out of bounds\n";
+            if (x < 0 || x + textW > finalWidth || y < 0 || y + textH > finalHeight) {
+                std::cerr << "Label for bounding box out of bounds. Clamping to frame.\n";
+                // Failsafe: Force the label to stay within the frame boundaries
+                x = std::max(0, std::min(x, finalWidth - textW));
+                y = std::max(0, std::min(y, finalHeight - textH));
+            }
         }
     }
 
