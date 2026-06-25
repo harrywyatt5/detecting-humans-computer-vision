@@ -98,4 +98,8 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sam3-onnx"
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/language.token"
 	DESTINATION share/${PROJECT_NAME}
 )
+install(DIRECTORY
+  launch
+  DESTINATION share/${PROJECT_NAME}
+)
 ament_package()
